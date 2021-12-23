@@ -1,5 +1,51 @@
 {
   "uid" : "b1a8273437954620fa374b796ffaacdd",
   "name" : "behaviors",
-  "children" : [ ]
+  "children" : [ {
+    "name" : "测试百度模块",
+    "children" : [ {
+      "name" : "搜索selenium结果用例",
+      "children" : [ {
+        "name" : "test_001",
+        "uid" : "8ff772b8d0d62fc0",
+        "parentUid" : "c8ee4542f68f799436a783f0780a6151",
+        "status" : "passed",
+        "time" : {
+          "start" : 1640244155658,
+          "stop" : 1640244169428,
+          "duration" : 13770
+        },
+        "flaky" : false,
+        "newFailed" : false,
+        "newPassed" : false,
+        "newBroken" : false,
+        "retriesCount" : 0,
+        "retriesStatusChange" : false,
+        "parameters" : [ ]
+      } ],
+      "uid" : "c8ee4542f68f799436a783f0780a6151"
+    }, {
+      "name" : "测试搜索候选用例",
+      "children" : [ {
+        "name" : "test_002",
+        "uid" : "4947b35f686ef1dc",
+        "parentUid" : "1b82d867091f36667eef8264551375c6",
+        "status" : "passed",
+        "time" : {
+          "start" : 1640244170211,
+          "stop" : 1640244171925,
+          "duration" : 1714
+        },
+        "flaky" : false,
+        "newFailed" : false,
+        "newPassed" : false,
+        "newBroken" : false,
+        "retriesCount" : 0,
+        "retriesStatusChange" : false,
+        "parameters" : [ ]
+      } ],
+      "uid" : "1b82d867091f36667eef8264551375c6"
+    } ],
+    "uid" : "06f6d3f6c525268ccce4869953dec19f"
+  } ]
 }

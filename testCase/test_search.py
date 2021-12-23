@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-
 # -*- coding:utf-8 -*-
-import os
 import re
 import pytest
 import allure
 from utils.logger import log
-from utils.readConfig import ini
-from pageObject.searchpage import SearchPage
+from common.readconfig import ini
+from page_object.searchpage import SearchPage
 
 
 @allure.feature("测试百度模块")
@@ -37,8 +35,10 @@ class TestSearch:
         assert all(["selenium" in i for i in search.imagine])
 
 
+# if __name__ == '__main__':
+#     pytest.main(['TestCase/test_search.py'])
 if __name__ == '__main__':
-    #    pytest.main(['/Users/qiang.sun/PycharmProjects/AdminTool_Select_All_Clients/testCase/test_search.py'])
-    pytest.main(['/Users/qiang.sun/PycharmProjects/AdminTool_Select_All_Clients/testCase/test_search.py', '--alluredir',
-                 './allure'])
+# 下面的代码使用pycharm运行可能会没有生成报告，建议使用vscode执行
+    import os
+    pytest.main(['TestCase/test_search.py', '--alluredir', './allure'])
     os.system('allure serve allure')

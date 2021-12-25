@@ -5,8 +5,8 @@ import os
 import re
 import pytest
 import allure
-from utils.logger import log
-from utils.readConfig import ini
+from Utils.logger import log
+from Utils.readConfig import ini
 from pageObject.searchpage import SearchPage
 
 
@@ -38,7 +38,7 @@ class TestSearch:
 
 
 if __name__ == '__main__':
-    #    pytest.main(['/Users/qiang.sun/PycharmProjects/AdminTool_Select_All_Clients/testCase/test_search.py'])
-    pytest.main(['/Users/qiang.sun/PycharmProjects/AdminTool_Select_All_Clients/testCase/test_search.py', '--alluredir',
+    #    pytest.main(['/Users/qiang.sun/PycharmProjects/AdminTool_Select_All_Clients/Test_Case/test_search.py'])
+    pytest.main(['/Users/qiang.sun/PycharmProjects/AdminTool_Select_All_Clients/Test_Case/test_search.py', '--alluredir',
                  './allure'])
     os.system('allure serve allure')

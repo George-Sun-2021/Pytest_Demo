@@ -2,7 +2,7 @@
 # -*- coding:utf-8 -*-
 import os
 from selenium.webdriver.common.by import By
-from utils.times import dt_strftime
+from Utils.times import dt_strftime
 
 
 class ConfigManager(object):

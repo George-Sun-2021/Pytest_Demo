@@ -9,8 +9,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import TimeoutException
 
 from config.conf import cm
-from utils.times import sleep
-from utils.logger import log
+from Utils.times import sleep
+from Utils.logger import log
 
 
 class WebPage(object):

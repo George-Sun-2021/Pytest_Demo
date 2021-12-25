@@ -8,8 +8,8 @@ from selenium import webdriver
 
 from config.conf import cm
 from common.readconfig import ini
-from utils.times import timestamp
-from utils.send_mail import send_report
+from Utils.times import timestamp
+from Utils.send_mail import send_report
 
 driver = None
 

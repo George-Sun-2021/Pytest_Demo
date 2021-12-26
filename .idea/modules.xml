@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/AdminTool_Select_All_Clients.iml" filepath="$PROJECT_DIR$/.idea/AdminTool_Select_All_Clients.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/PytestDemo.iml" filepath="$PROJECT_DIR$/.idea/PytestDemo.iml" />
     </modules>
   </component>
 </project>

@@ -13,7 +13,7 @@ class ConfigManager(object):
     ELEMENT_PATH = os.path.join(BASE_DIR, 'page_element')
 
     # 报告文件
-    REPORT_FILE = os.path.join(BASE_DIR, 'report.html')
+    REPORT_FILE = os.path.join(BASE_DIR, 'reports', 'report.html')
 
     # 元素定位的类型
     LOCATE_MODE = {
@@ -40,7 +40,7 @@ class ConfigManager(object):
     @property
     def screen_path(self):
         """截图目录"""
-        screenshot_dir = os.path.join(self.BASE_DIR, 'screen_capture')
+        screenshot_dir = os.path.join(self.BASE_DIR, 'screenshots')
         if not os.path.exists(screenshot_dir):
             os.makedirs(screenshot_dir)
         now_time = dt_strftime("%Y%m%d%H%M%S")
@@ -66,4 +66,4 @@ class ConfigManager(object):
 
 cm = ConfigManager()
 if __name__ == '__main__':
-    print(cm.BASE_DIR)
+    print(cm.REPORT_FILE)

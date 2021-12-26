@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 
-from page.webpage import WebPage, sleep
+from page.basepage import BasePage, sleep
 from common.readelement import Element
 
 search = Element('search')
 
 
-class SearchPage(WebPage):
+class SearchPage(BasePage):
     """搜索类"""
 
     def input_search(self, content):

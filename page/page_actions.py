@@ -34,10 +34,46 @@ from selenium.common.exceptions import StaleElementReferenceException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 from seleniumbase.config import settings
-from seleniumbase.fixtures import shared_utils as s_utils
+
+from utils import exception_messages as em_utils
 
 
-def is_element_present(driver, selector, by=By.CSS_SELECTOR):
+def element_locator(page_elem_class, elem_name):
+    """
+
+    @param page_elem_class:传入页面元素对象
+    @param elem_name:传入自定义的元素名称
+    @return:
+    """
+    page_obj_elem = page_elem_class()
+    elems_info = page_obj_elem.info
+    for item in elems_info:
+        if item.info["elem_name"] == elem_name:
+            elem_locator = ("By.{}".format(item["data"]["method"]), item["data"]["value"])
+            method = item["data"]["method"]
+            value = item["data"]["value"]
+            log.info("元素名称为：{}，元素定位方式为：{}，元素对象值为：{}".format(elem_name, method, value))
+            if method == "ID" and value is not None:
+                return elem_locator
+            elif method == "XPATH" and value is not None:
+                return elem_locator
+            elif method == "LINK_TEXT" and value is not None:
+                return elem_locator
+            elif method == "PARTIAL_LINK_TEXT" and value is not None:
+                return elem_locator
+            elif method == "NAME" and value is not None:
+                return elem_locator
+            elif method == "TAG_NAME" and value is not None:
+                return elem_locator
+            elif method == "CLASS_NAME" and value is not None:
+                return elem_locator
+            elif method == "CSS_SELECTOR" and value is not None:
+                return elem_locator
+            else:
+                log.error("元素名称：{}，此元素定位方式异常，定位元素值异常，请检查！！！".format(elem_name))
+
+
+def is_element_present(driver, selector, by=By.XPATH):
     """
     Returns whether the specified element selector is present on the page.
     @Params
@@ -54,7 +90,7 @@ def is_element_present(driver, selector, by=By.CSS_SELECTOR):
         return False
 
 
-def is_element_visible(driver, selector, by=By.CSS_SELECTOR):
+def is_element_visible(driver, selector, by=By.XPATH):
     """
     Returns whether the specified element selector is visible on the page.
     @Params
@@ -71,7 +107,7 @@ def is_element_visible(driver, selector, by=By.CSS_SELECTOR):
         return False
 
 
-def is_element_enabled(driver, selector, by=By.CSS_SELECTOR):
+def is_element_enabled(driver, selector, by=By.XPATH):
     """
     Returns whether the specified element selector is enabled on the page.
     @Params
@@ -88,7 +124,7 @@ def is_element_enabled(driver, selector, by=By.CSS_SELECTOR):
         return False
 
 
-def is_text_visible(driver, text, selector, by=By.CSS_SELECTOR):
+def is_text_visible(driver, text, selector, by=By.XPATH):
     """
     Returns whether the specified text is visible in the specified selector.
     @Params
@@ -107,7 +143,7 @@ def is_text_visible(driver, text, selector, by=By.CSS_SELECTOR):
 
 
 def is_attribute_present(
-        driver, selector, attribute, value=None, by=By.CSS_SELECTOR
+        driver, selector, attribute, value=None, by=By.XPATH
 ):
     """
     Returns whether the specified attribute is present in the given selector.
@@ -137,7 +173,7 @@ def is_attribute_present(
         return False
 
 
-def hover_on_element(driver, selector, by=By.CSS_SELECTOR):
+def hover_on_element(driver, selector, by=By.XPATH):
     """
     Fires the hover event for the specified element by the given selector.
     @Params
@@ -159,7 +195,7 @@ def hover_element(driver, element):
 
 
 def timeout_exception(exception, message):
-    exception, message = s_utils.format_exc(exception, message)
+    exception, message = em_utils.format_exc(exception, message)
     raise exception(message)
 
 
@@ -279,7 +315,7 @@ def hover_element_and_double_click(
 
 
 def wait_for_element_present(
-        driver, selector, by=By.CSS_SELECTOR, timeout=settings.LARGE_TIMEOUT
+        driver, selector, by=By.XPATH, timeout=settings.LARGE_TIMEOUT
 ):
     """
     Searches for the specified element by the given selector. Returns the
@@ -294,11 +330,12 @@ def wait_for_element_present(
     @Returns
     A web element object
     """
+
     element = None
     start_ms = time.time() * 1000.0
     stop_ms = start_ms + (timeout * 1000.0)
     for x in range(int(timeout * 10)):
-        s_utils.check_if_time_limit_exceeded()
+        em_utils.check_if_time_limit_exceeded()
         try:
             element = driver.find_element(by=by, value=selector)
             return element

@@ -19,9 +19,9 @@ from selenium.common.exceptions import (
 
 from config import constants
 from config.conf import cm
-from Utils.times import sleep
-from Utils.logger import log
 from page import page_actions
+from utils.times import sleep
+from utils.logger import log
 
 
 class BasePage(object):
@@ -34,34 +34,50 @@ class BasePage(object):
         self.driver = driver
         self.environment = None
         self.env = None  # Add a shortened version of self.environment
-        self.timeout = 20
-        self.wait = WebDriverWait(self.driver, self.timeout)
+        self.poll_frequency = 0.5
+        self.timeout = constants.LARGE_TIMEOUT
+        self.wait = WebDriverWait(self.driver, self.timeout)  # define WebDriverWait()
 
-    @staticmethod
-    def element_locator(func, locator):
-        """元素定位器"""
-        name, value = locator
-        return func(cm.LOCATE_MODE[name], value)
+    ############
 
-    def open(self, url):
-        """打开网址并验证"""
+    # Using (Used page Actions)
+
+    def visit(self, url):
+        """
+        open the url
+        @param url:target url to test
+        """
+        self.driver.set_page_load_timeout(60)
+        self.driver.implicitly_wait(constants.EXTREME_TIMEOUT)
         try:
             self.driver.get(url)
-            self.driver.set_page_load_timeout(60)
-            self.driver.implicitly_wait(10)
-            log.info("打开网页：%s" % url)
+            log.info("opening website：%s" % url)
         except TimeoutException:
-            raise TimeoutException("打开%s超时请检查网络或网址服务器" % url)
+            raise TimeoutException("open'%s' timeout, please check the network or web server correct or not" % url)
 
     def find_element(self, locator):
-        """寻找单个元素"""
-        return BasePage.element_locator(lambda *args: self.wait.until(
-            EC.presence_of_element_located(args)), locator)
+        """
+        find target single element
+        @param locator:input locator as per format:(By.xx,"value")
+        @return:web element
+        """
+        try:
+            return self.wait.until(EC.presence_of_element_located(*locator))
+
+        except Exception as e:
+            log.info("Cannot locate the element, error message is ：{}".format(e))
 
     def find_elements(self, locator):
-        """查找多个相同的元素"""
-        return BasePage.element_locator(lambda *args: self.wait.until(
-            EC.presence_of_all_elements_located(args)), locator)
+        """
+        find target elements as list
+        @param locator:input locator as per format:(By.xx,"value")
+        @return:web elements as list
+        """
+        try:
+            return self.wait.until(EC.presence_of_all_elements_located(*locator))
+
+        except Exception as e:
+            log.info("Cannot locate the element, error message is ：{}".format(e))
 
     def elements_num(self, locator):
         """获取相同元素的个数"""
@@ -82,11 +98,6 @@ class BasePage(object):
         self.find_element(locator).click()
         sleep()
         log.info("点击元素：{}".format(locator))
-
-    def is_element_visible(self, selector, by=By.CSS_SELECTOR):
-        self.wait_for_ready_state_complete()
-        selector, by = self.__recalculate_selector(selector, by)
-        return page_actions.is_element_visible(self.driver, selector, by)
 
     def element_text(self, locator):
         """获取当前的text"""
@@ -132,6 +143,80 @@ class BasePage(object):
             except Exception:
                 pass
         page_actions.switch_to_frame(self.driver, frame, timeout)
+
+    ############
+
+    # Bases (Basic page actions)
+
+    def is_element_present(self, selector, by=By.XPATH):
+        selector, by = self.element_locator(selector, by)
+        return page_actions.is_element_present(self.driver, selector, by)
+
+    def is_element_visible(self, selector, by=By.CSS_SELECTOR):
+        self.wait_for_ready_state_complete()
+        selector, by = self.__recalculate_selector(selector, by)
+        return page_actions.is_element_visible(self.driver, selector, by)
+
+    def is_element_enabled(self, selector, by=By.CSS_SELECTOR):
+        self.wait_for_ready_state_complete()
+        selector, by = self.__recalculate_selector(selector, by)
+        return page_actions.is_element_enabled(self.driver, selector, by)
+
+    def is_text_visible(self, text, selector="html", by=By.CSS_SELECTOR):
+        self.wait_for_ready_state_complete()
+        time.sleep(0.01)
+        selector, by = self.__recalculate_selector(selector, by)
+        return page_actions.is_text_visible(self.driver, text, selector, by)
+
+    def is_attribute_present(
+            self, selector, attribute, value=None, by=By.CSS_SELECTOR
+    ):
+        """Returns True if the element attribute/value is found.
+        If the value is not specified, the attribute only needs to exist."""
+        self.wait_for_ready_state_complete()
+        time.sleep(0.01)
+        selector, by = self.__recalculate_selector(selector, by)
+        return page_actions.is_attribute_present(
+            self.driver, selector, attribute, value, by
+        )
+
+    def is_link_text_visible(self, link_text):
+        self.wait_for_ready_state_complete()
+        time.sleep(0.01)
+        return page_actions.is_element_visible(
+            self.driver, link_text, by=By.LINK_TEXT
+        )
+
+    def is_partial_link_text_visible(self, partial_link_text):
+        self.wait_for_ready_state_complete()
+        time.sleep(0.01)
+        return page_actions.is_element_visible(
+            self.driver, partial_link_text, by=By.PARTIAL_LINK_TEXT
+        )
+
+    def is_link_text_present(self, link_text):
+        """Returns True if the link text appears in the HTML of the page.
+        The element doesn't need to be visible,
+        such as elements hidden inside a dropdown selection."""
+        self.wait_for_ready_state_complete()
+        soup = self.get_beautiful_soup()
+        html_links = soup.find_all("a")
+        for html_link in html_links:
+            if html_link.text.strip() == link_text.strip():
+                return True
+        return False
+
+    def is_partial_link_text_present(self, link_text):
+        """Returns True if the partial link appears in the HTML of the page.
+        The element doesn't need to be visible,
+        such as elements hidden inside a dropdown selection."""
+        self.wait_for_ready_state_complete()
+        soup = self.get_beautiful_soup()
+        html_links = soup.find_all("a")
+        for html_link in html_links:
+            if link_text.strip() in html_link.text.strip():
+                return True
+        return False
 
 
 if __name__ == "__main__":

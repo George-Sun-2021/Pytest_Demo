@@ -3,7 +3,7 @@
 import re
 import pytest
 import allure
-from Utils.logger import log
+from utils.logger import log
 from common.readconfig import ini
 from page_object.searchpage import SearchPage
 

@@ -2,7 +2,7 @@
 # -*- coding:utf-8 -*-
 import os
 from selenium.webdriver.common.by import By
-from Utils.times import dt_strftime
+from utils.times import dt_strftime
 
 
 class ConfigManager(object):
@@ -17,11 +17,11 @@ class ConfigManager(object):
 
     # 元素定位的类型
     LOCATE_MODE = {
-        'css': By.CSS_SELECTOR,
-        'xpath': By.XPATH,
-        'name': By.NAME,
-        'id': By.ID,
-        'class': By.CLASS_NAME
+        'css': 'By.CSS_SELECTOR',
+        'xpath': 'By.XPATH',
+        'name': 'By.NAME',
+        'id': 'By.ID',
+        'class': 'By.CLASS_NAME',
     }
 
     # 邮件信息

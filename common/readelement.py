@@ -21,7 +21,7 @@ class Element(object):
         data = self.data.get(item)
         if data:
             name, value = data.split('==')
-            return name, value
+            return cm.LOCATE_MODE[name], value
         raise ArithmeticError("{}中不存在关键字：{}".format(self.file_name, item))
 
 

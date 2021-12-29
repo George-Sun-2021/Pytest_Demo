@@ -1,31 +1,112 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 import base64
+import os
 import pytest
 import allure
+import logging
 from py.xml import html
-from selenium import webdriver
 
+from config import constants
 from config.conf import cm
 from common.readconfig import ini
 from Utils.times import timestamp
 from Utils.send_mail import send_report
 
+from selenium import webdriver
+from selenium.webdriver import Remote
+from selenium.webdriver.chrome.options import Options as CO
+from selenium.webdriver.firefox.options import Options as FO
+from selenium.webdriver.ie.options import Options as IEO
+
 driver = None
+
+
+def pytest_addoption(parser):
+    """
+    定义钩子函数hook进行命令行定义浏览器传参，默认chrome,定义浏览器启动方式传参，默认启动
+    @param parser:
+    @return:
+    """
+    # 浏览器选项
+    parser.addoption(
+        "--br",
+        action="store",
+        dest="browser",
+        type=str.lower,
+        default=constants.Browser.GOOGLE_CHROME,
+        choices=constants.ValidBrowsers.valid_browsers,
+        help="""Specifies the web browser to use. Default: Chrome.
+                If you want to use Firefox, explicitly indicate that.
+                Example: (--br=firefox)""")
+
+    # 是否开启浏览器界面选项
+    parser.addoption(
+        "--is_headless",
+        action="store",
+        dest="headless",
+        default=False,
+        help="""Using this makes Webdriver run web browsers
+                headlessly, which is required on headless machines.
+                Default: False on Mac/Windows. True on Linux.""",
+    )
+
+    parser.addoption(
+        "--test_env",
+        action="store",
+        dest="env",
+        choices=(
+            constants.Environment.DEVLOCAL,
+            constants.Environment.DEVINT,
+            constants.Environment.BVT_DTTL,
+            constants.Environment.BVT_KPMG,
+            constants.Environment.BVT_BDO,
+            constants.Environment.BVT_RSM,
+        ),
+        default=constants.Environment.DEVLOCAL,
+        help="""Specifies the test enviroment to use. Default: dev local.
+                If you want to choose other envrioments, explicitly indicate that.
+                Example: (--test_env=devInt)""",
+    )
 
 
 @pytest.fixture(scope='session', autouse=True)
 def drivers(request):
     global driver
-    if driver is None:
-        driver = webdriver.Chrome()
-        driver.maximize_window()
+    browser = request.config.getoption("browser")
+    # headless or not
+    headless = request.config.getoption("headless")
+    print("获取命令行传参：{}".format(request.config.getoption("browser")))
+    if not headless:
+        if browser == "chrome":
+            driver = webdriver.Chrome()
+        elif browser == "firefox":
+            driver = webdriver.Firefox()
+        elif browser == "ie":
+            driver = webdriver.Ie()
+        else:
+            logging.info("发送错误浏览器参数：{}".format(browser))
+    else:
+        if browser == "chrome":
+            chrome_options = CO()
+            chrome_options.add_argument('--headless')
+            driver = webdriver.Chrome(chrome_options=chrome_options)
+        elif browser == "firefox":
+            firefox_options = FO()
+            firefox_options.add_argument('--headless')
+            driver = webdriver.Firefox(firefox_options=firefox_options)
+        elif browser == "ie":
+            ie_options = IEO()
+            ie_options.add_argument('--headless')
+            driver = webdriver.Ie(ie_options=ie_options)
+        else:
+            logging.info("发送错误浏览器参数：{}".format(browser))
 
-    def fn():
-        driver.quit()
-
-    request.addfinalizer(fn)
-    return driver
+    driver.maximize_window()
+    yield driver
+    # driver.close()
+    driver.quit()
+    # return driver
 
 
 @pytest.hookimpl(hookwrapper=True)

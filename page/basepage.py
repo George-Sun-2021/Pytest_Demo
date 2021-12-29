@@ -4,6 +4,7 @@
 selenium基类
 本文件存放了selenium基类的封装方法
 """
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import (
@@ -13,82 +14,44 @@ from selenium.common.exceptions import (
     NoSuchWindowException,
     StaleElementReferenceException,
     WebDriverException,
+    TimeoutException,
 )
 
+from config import constants
 from config.conf import cm
 from Utils.times import sleep
 from Utils.logger import log
+from page import page_actions
 
 
 class BasePage(object):
-    """selenium基类"""
+    """selenium base methods"""
 
-    def __init__(self, *args, **kwargs):
-        super(BasePage, self).__init__(*args, **kwargs)
+    def __init__(self, driver, *args, **kwargs):
+        # super(BasePage, self).__init__(*args, **kwargs)
 
         # self.driver = webdriver.Chrome()
-        self.driver = None
+        self.driver = driver
         self.environment = None
         self.env = None  # Add a shortened version of self.environment
-
         self.timeout = 20
         self.wait = WebDriverWait(self.driver, self.timeout)
-
-    def open(self, url):
-        """ Navigates the current browser window to the specified page. """
-        self.__check_scope()
-        self.__check_browser()
-        pre_action_url = None
-        try:
-            pre_action_url = self.driver.current_url
-        except Exception:
-            pass
-        if type(url) is str:
-            url = url.strip()  # Remove leading and trailing whitespace
-        if (type(url) is not str) or not self.__looks_like_a_page_url(url):
-            # url should start with one of the following:
-            # "http:", "https:", "://", "data:", "file:",
-            # "about:", "chrome:", "opera:", or "edge:".
-            msg = 'Did you forget to prefix your URL with "http:" or "https:"?'
-            raise Exception('Invalid URL: "%s"\n%s' % (url, msg))
-        self.__last_page_load_url = None
-        self.driver.get_log("browser")
-        if url.startswith("://"):
-            # Convert URLs such as "://google.com" into "https://google.com"
-            url = "https" + url
-        try:
-            self.driver.get(url)
-        except Exception as e:
-            if "ERR_CONNECTION_TIMED_OUT" in e.msg:
-                self.sleep(0.5)
-                self.driver.get(url)
-            else:
-                raise Exception(e.msg)
-        if (
-                self.driver.current_url == pre_action_url
-                and pre_action_url != url
-        ):
-            time.sleep(0.1)  # Make sure load happens
-        if settings.WAIT_FOR_RSC_ON_PAGE_LOADS:
-            self.wait_for_ready_state_complete()
-        self.__demo_mode_pause_if_active()
-
-    def get_url(self, url):
-        """打开网址并验证"""
-        self.driver.maximize_window()
-        self.driver.set_page_load_timeout(60)
-        try:
-            self.driver.get(url)
-            self.driver.implicitly_wait(10)
-            log.info("打开网页：%s" % url)
-        except TimeoutException:
-            raise TimeoutException("打开%s超时请检查网络或网址服务器" % url)
 
     @staticmethod
     def element_locator(func, locator):
         """元素定位器"""
         name, value = locator
         return func(cm.LOCATE_MODE[name], value)
+
+    def open(self, url):
+        """打开网址并验证"""
+        try:
+            self.driver.get(url)
+            self.driver.set_page_load_timeout(60)
+            self.driver.implicitly_wait(10)
+            log.info("打开网页：%s" % url)
+        except TimeoutException:
+            raise TimeoutException("打开%s超时请检查网络或网址服务器" % url)
 
     def find_element(self, locator):
         """寻找单个元素"""
@@ -120,6 +83,11 @@ class BasePage(object):
         sleep()
         log.info("点击元素：{}".format(locator))
 
+    def is_element_visible(self, selector, by=By.CSS_SELECTOR):
+        self.wait_for_ready_state_complete()
+        selector, by = self.__recalculate_selector(selector, by)
+        return page_actions.is_element_visible(self.driver, selector, by)
+
     def element_text(self, locator):
         """获取当前的text"""
         _text = self.find_element(locator).text
@@ -136,84 +104,34 @@ class BasePage(object):
         self.driver.refresh()
         self.driver.implicitly_wait(30)
 
-
-    def sleep(self, seconds):
+    def set_window_size(self, width, height):
         self.__check_scope()
-        if not config.time_limit:
-            time.sleep(seconds)
-        elif seconds < 0.4:
-            shared_utils.check_if_time_limit_exceeded()
-            time.sleep(seconds)
-            shared_utils.check_if_time_limit_exceeded()
-        else:
-            start_ms = time.time() * 1000.0
-            stop_ms = start_ms + (seconds * 1000.0)
-            for x in range(int(seconds * 5)):
-                shared_utils.check_if_time_limit_exceeded()
-                now_ms = time.time() * 1000.0
-                if now_ms >= stop_ms:
-                    break
-                time.sleep(0.2)
+        self.driver.set_window_size(width, height)
+        self.__demo_mode_pause_if_active()
 
-    ############
+    def maximize_window(self):
+        self.__check_scope()
+        self.driver.maximize_window()
+        self.__demo_mode_pause_if_active()
 
-    def __check_scope(self):
-        if hasattr(self, "browser"):  # self.browser stores the type of browser
-            return  # All good: setUp() already initialized variables in "self"
-        else:
-            from common.exceptions import OutOfScopeException
-
-            message = (
-                "\n It looks like you are trying to call a SeleniumBase method"
-                "\n from outside the scope of your test class's `self` object,"
-                "\n which is initialized by calling BaseCase's setUp() method."
-                "\n The `self` object is where all test variables are defined."
-                "\n If you created a custom setUp() method (that overrided the"
-                "\n the default one), make sure to call super().setUp() in it."
-                "\n When using page objects, be sure to pass the `self` object"
-                "\n from your test class into your page object methods so that"
-                "\n they can call BaseCase class methods with all the required"
-                "\n variables, which are initialized during the setUp() method"
-                "\n that runs automatically before all tests called by pytest."
-            )
-            raise OutOfScopeException(message)
-
-    ############
-
-    def __check_browser(self):
-        """This method raises an exception if the window was already closed."""
-        active_window = None
-        try:
-            active_window = self.driver.current_window_handle  # Fails if None
-        except Exception:
-            pass
-        if not active_window:
-            raise NoSuchWindowException("Active window was already closed!")
-
-    ############
-
-    def __looks_like_a_page_url(self, url):
-        """Returns True if the url parameter looks like a URL. This method
-        is slightly more lenient than page_utils.is_valid_url(url) due to
-        possible typos when calling self.get(url), which will try to
-        navigate to the page if a URL is detected, but will instead call
-        self.get_element(URL_AS_A_SELECTOR) if the input in not a URL."""
-        if (
-            url.startswith("http:")
-            or url.startswith("https:")
-            or url.startswith("://")
-            or url.startswith("chrome:")
-            or url.startswith("about:")
-            or url.startswith("data:")
-            or url.startswith("file:")
-            or url.startswith("edge:")
-            or url.startswith("opera:")
-            or url.startswith("view-source:")
-        ):
-            return True
-        else:
-            return False
-
+    def switch_to_frame(self, frame, timeout=None):
+        """Wait for an iframe to appear, and switch to it. This should be
+        usable as a drop-in replacement for driver.switch_to.frame().
+        The iframe identifier can be a selector, an index, an id, a name,
+        or a web element, but scrolling to the iframe first will only occur
+        for visible iframes with a string selector.
+        @Params
+        frame - the frame element, name, id, index, or selector
+        timeout - the time to wait for the alert in seconds
+        """
+        if not timeout:
+            timeout = constants.SMALL_TIMEOUT
+        if type(frame) is str and self.is_element_visible(frame):
+            try:
+                self.scroll_to(frame, timeout=1)
+            except Exception:
+                pass
+        page_actions.switch_to_frame(self.driver, frame, timeout)
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ class TestSearch:
     def open_baidu(self, drivers):
         """打开百度"""
         search = SearchPage(drivers)
-        search.get_url(ini.url)
+        search.open(ini.url)
 
     @allure.story("搜索selenium结果用例")
     def test_001(self, drivers):

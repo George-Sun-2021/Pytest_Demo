@@ -38,39 +38,20 @@ from seleniumbase.config import settings
 from utils import exception_messages as em_utils
 
 
-def element_locator(page_elem_class, elem_name):
+def get_domain_url(url):
     """
-
-    @param page_elem_class:传入页面元素对象
-    @param elem_name:传入自定义的元素名称
-    @return:
+    Use this to convert a url like this:
+    https://blog.xkcd.com/2014/07/22/what-if-book-tour/
+    Into this:
+    https://blog.xkcd.com
     """
-    page_obj_elem = page_elem_class()
-    elems_info = page_obj_elem.info
-    for item in elems_info:
-        if item.info["elem_name"] == elem_name:
-            elem_locator = ("By.{}".format(item["data"]["method"]), item["data"]["value"])
-            method = item["data"]["method"]
-            value = item["data"]["value"]
-            log.info("元素名称为：{}，元素定位方式为：{}，元素对象值为：{}".format(elem_name, method, value))
-            if method == "ID" and value is not None:
-                return elem_locator
-            elif method == "XPATH" and value is not None:
-                return elem_locator
-            elif method == "LINK_TEXT" and value is not None:
-                return elem_locator
-            elif method == "PARTIAL_LINK_TEXT" and value is not None:
-                return elem_locator
-            elif method == "NAME" and value is not None:
-                return elem_locator
-            elif method == "TAG_NAME" and value is not None:
-                return elem_locator
-            elif method == "CLASS_NAME" and value is not None:
-                return elem_locator
-            elif method == "CSS_SELECTOR" and value is not None:
-                return elem_locator
-            else:
-                log.error("元素名称：{}，此元素定位方式异常，定位元素值异常，请检查！！！".format(elem_name))
+    if not url.startswith("http://") and not url.startswith("https://"):
+        return url
+    url_header = url.split("://")[0]
+    simple_url = url.split("://")[1]
+    base_url = simple_url.split("/")[0]
+    domain_url = url_header + "://" + base_url
+    return domain_url
 
 
 def is_element_present(driver, selector, by=By.XPATH):
@@ -379,7 +360,7 @@ def wait_for_element_visible(
     start_ms = time.time() * 1000.0
     stop_ms = start_ms + (timeout * 1000.0)
     for x in range(int(timeout * 10)):
-        s_utils.check_if_time_limit_exceeded()
+        em_utils.check_if_time_limit_exceeded()
         try:
             element = driver.find_element(by=by, value=selector)
             is_present = True

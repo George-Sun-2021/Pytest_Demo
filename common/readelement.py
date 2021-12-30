@@ -2,27 +2,28 @@
 # -*- coding:utf-8 -*-
 import os
 import yaml
-from config.conf import cm
+import config.configs as conf
+from config.path_manager import pm
 
 
 class Element(object):
-    """获取元素"""
+    """get element from yaml file"""
 
     def __init__(self, name):
         self.file_name = '%s.yaml' % name
-        self.element_path = os.path.join(cm.ELEMENT_PATH, self.file_name)
+        self.element_path = os.path.join(pm.ELEMENT_PATH, self.file_name)
         if not os.path.exists(self.element_path):
-            raise FileNotFoundError("%s 文件不存在！" % self.element_path)
+            raise FileNotFoundError("%s file does not exist！" % self.element_path)
         with open(self.element_path, encoding='utf-8') as f:
             self.data = yaml.safe_load(f)
 
     def __getitem__(self, item):
-        """获取属性"""
+        """get property"""
         data = self.data.get(item)
         if data:
             name, value = data.split('==')
-            return cm.LOCATE_MODE[name], value
-        raise ArithmeticError("{}中不存在关键字：{}".format(self.file_name, item))
+            return conf.LOCATE_MODE[name], value
+        raise ArithmeticError("The keyword: {} is not in {}".format(item, self.file_name))
 
 
 if __name__ == '__main__':

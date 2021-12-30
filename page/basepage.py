@@ -17,11 +17,11 @@ from selenium.common.exceptions import (
     TimeoutException,
 )
 
-from config import constants
-from config.conf import cm
-from page import page_actions
-from utils.times import sleep
-from utils.logger import log
+from config import configs
+from config.path_manager import pm
+from page import page_utils
+from utils.time import sleep
+import logging
 
 
 class BasePage(object):
@@ -34,8 +34,8 @@ class BasePage(object):
         self.driver = driver
         self.environment = None
         self.env = None  # Add a shortened version of self.environment
-        self.poll_frequency = 0.5
-        self.timeout = constants.LARGE_TIMEOUT
+        self.poll_frequency = configs.POLL_FREQUENCY
+        self.timeout = configs.LARGE_TIMEOUT
         self.wait = WebDriverWait(self.driver, self.timeout)  # define WebDriverWait()
 
     ############
@@ -47,11 +47,11 @@ class BasePage(object):
         open the url
         @param url:target url to test
         """
-        self.driver.set_page_load_timeout(60)
-        self.driver.implicitly_wait(constants.EXTREME_TIMEOUT)
+        self.driver.set_page_load_timeout(configs.PAGE_LOAD_TIMEOUT)
+        self.driver.implicitly_wait(configs.EXTREME_TIMEOUT)
         try:
             self.driver.get(url)
-            log.info("opening website：%s" % url)
+            logging.info("opening website：%s" % url)
         except TimeoutException:
             raise TimeoutException("open'%s' timeout, please check the network or web server correct or not" % url)
 
@@ -65,7 +65,7 @@ class BasePage(object):
             return self.wait.until(EC.presence_of_element_located(*locator))
 
         except Exception as e:
-            log.info("Cannot locate the element, error message is ：{}".format(e))
+            logging.info("Cannot locate the element, error message is ：{}".format(e))
 
     def find_elements(self, locator):
         """
@@ -77,7 +77,7 @@ class BasePage(object):
             return self.wait.until(EC.presence_of_all_elements_located(*locator))
 
         except Exception as e:
-            log.info("Cannot locate the element, error message is ：{}".format(e))
+            logging.info("Cannot locate the element, error message is ：{}".format(e))
 
     def elements_num(self, locator):
         """获取相同元素的个数"""
@@ -136,13 +136,13 @@ class BasePage(object):
         timeout - the time to wait for the alert in seconds
         """
         if not timeout:
-            timeout = constants.SMALL_TIMEOUT
+            timeout = configs.SMALL_TIMEOUT
         if type(frame) is str and self.is_element_visible(frame):
             try:
                 self.scroll_to(frame, timeout=1)
             except Exception:
                 pass
-        page_actions.switch_to_frame(self.driver, frame, timeout)
+        page_utils.switch_to_frame(self.driver, frame, timeout)
 
     ############
 
@@ -150,23 +150,23 @@ class BasePage(object):
 
     def is_element_present(self, selector, by=By.XPATH):
         selector, by = self.element_locator(selector, by)
-        return page_actions.is_element_present(self.driver, selector, by)
+        return page_utils.is_element_present(self.driver, selector, by)
 
     def is_element_visible(self, selector, by=By.CSS_SELECTOR):
         self.wait_for_ready_state_complete()
         selector, by = self.__recalculate_selector(selector, by)
-        return page_actions.is_element_visible(self.driver, selector, by)
+        return page_utils.is_element_visible(self.driver, selector, by)
 
     def is_element_enabled(self, selector, by=By.CSS_SELECTOR):
         self.wait_for_ready_state_complete()
         selector, by = self.__recalculate_selector(selector, by)
-        return page_actions.is_element_enabled(self.driver, selector, by)
+        return page_utils.is_element_enabled(self.driver, selector, by)
 
     def is_text_visible(self, text, selector="html", by=By.CSS_SELECTOR):
         self.wait_for_ready_state_complete()
         time.sleep(0.01)
         selector, by = self.__recalculate_selector(selector, by)
-        return page_actions.is_text_visible(self.driver, text, selector, by)
+        return page_utils.is_text_visible(self.driver, text, selector, by)
 
     def is_attribute_present(
             self, selector, attribute, value=None, by=By.CSS_SELECTOR
@@ -176,21 +176,21 @@ class BasePage(object):
         self.wait_for_ready_state_complete()
         time.sleep(0.01)
         selector, by = self.__recalculate_selector(selector, by)
-        return page_actions.is_attribute_present(
+        return page_utils.is_attribute_present(
             self.driver, selector, attribute, value, by
         )
 
     def is_link_text_visible(self, link_text):
         self.wait_for_ready_state_complete()
         time.sleep(0.01)
-        return page_actions.is_element_visible(
+        return page_utils.is_element_visible(
             self.driver, link_text, by=By.LINK_TEXT
         )
 
     def is_partial_link_text_visible(self, partial_link_text):
         self.wait_for_ready_state_complete()
         time.sleep(0.01)
-        return page_actions.is_element_visible(
+        return page_utils.is_element_visible(
             self.driver, partial_link_text, by=By.PARTIAL_LINK_TEXT
         )
 

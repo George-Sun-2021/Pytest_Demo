@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 import configparser
-from config.conf import cm
+from config.path_manager import pm
 
 HOST = 'HOST'
 
@@ -11,7 +11,7 @@ class ReadConfig(object):
 
     def __init__(self):
         self.config = configparser.RawConfigParser()  # 当有%的符号时请使用Raw读取
-        self.config.read(cm.ini_file, encoding='utf-8')
+        self.config.read(pm.ini_file, encoding='utf-8')
 
     def _get(self, section, option):
         """获取"""
@@ -20,7 +20,7 @@ class ReadConfig(object):
     def _set(self, section, option, value):
         """更新"""
         self.config.set(section, option, value)
-        with open(cm.ini_file, 'w') as f:
+        with open(pm.ini_file, 'w') as f:
             self.config.write(f)
 
     @property

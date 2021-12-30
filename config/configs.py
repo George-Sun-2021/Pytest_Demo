@@ -14,6 +14,8 @@ MINI_TIMEOUT = 2
 SMALL_TIMEOUT = 6
 LARGE_TIMEOUT = 10
 EXTREME_TIMEOUT = 30
+POLL_FREQUENCY = 0.5
+PAGE_LOAD_TIMEOUT = 60
 
 # Default browser resolutions when opening new windows for tests.
 # (Headless resolutions take priority, and include all browsers.)
@@ -22,6 +24,28 @@ CHROME_START_WIDTH = 1250
 CHROME_START_HEIGHT = 840
 HEADLESS_START_WIDTH = 1440
 HEADLESS_START_HEIGHT = 1880
+
+# basic type of the element locator
+LOCATE_MODE = {
+    'css': 'By.CSS_SELECTOR',
+    'xpath': 'By.XPATH',
+    'name': 'By.NAME',
+    'id': 'By.ID',
+    'class': 'By.CLASS_NAME',
+}
+
+# information for email
+EMAIL_INFO = {
+    'username': 'xxxxx@xxxx.com',  # 切换成你自己的地址
+    'password': 'xxxxx',
+    'smtp_host': 'smtp.xxxxx.com',
+    'smtp_port': 465
+}
+
+# 收件人
+ADDRESSEE = [
+    'xxxxxxx@xxxxx.com',
+]
 
 
 class Environment:
@@ -90,6 +114,3 @@ class Browser:
         "ipad": None,
         "remote": None,
     }
-
-
-

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 import logging
-from config.conf import cm
+from config.path_manager import pm
 
 
 class Log:
@@ -11,7 +11,7 @@ class Log:
             self.logger.setLevel(logging.DEBUG)
 
             # 创建一个handle写入文件
-            fh = logging.FileHandler(cm.log_file, encoding='utf-8')
+            fh = logging.FileHandler(pm.log_file, encoding='utf-8')
             fh.setLevel(logging.INFO)
 
             # 创建一个handle输出到控制台

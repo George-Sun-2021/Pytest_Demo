@@ -7,11 +7,11 @@ import allure
 import logging
 from py.xml import html
 
-from config import constants
-from config.conf import cm
+from config import configs
+from config.path_manager import pm
 from common.readconfig import ini
-from Utils.times import timestamp
-from Utils.send_mail import send_report
+from utils.time import timestamp
+from utils.send_mail import send_report
 
 from selenium import webdriver
 from selenium.webdriver import Remote
@@ -34,8 +34,8 @@ def pytest_addoption(parser):
         action="store",
         dest="browser",
         type=str.lower,
-        default=constants.Browser.GOOGLE_CHROME,
-        choices=constants.ValidBrowsers.valid_browsers,
+        default=configs.Browser.GOOGLE_CHROME,
+        choices=configs.ValidBrowsers.valid_browsers,
         help="""Specifies the web browser to use. Default: Chrome.
                 If you want to use Firefox, explicitly indicate that.
                 Example: (--br=firefox)""")
@@ -56,14 +56,14 @@ def pytest_addoption(parser):
         action="store",
         dest="env",
         choices=(
-            constants.Environment.DEVLOCAL,
-            constants.Environment.DEVINT,
-            constants.Environment.BVT_DTTL,
-            constants.Environment.BVT_KPMG,
-            constants.Environment.BVT_BDO,
-            constants.Environment.BVT_RSM,
+            configs.Environment.DEVLOCAL,
+            configs.Environment.DEVINT,
+            configs.Environment.BVT_DTTL,
+            configs.Environment.BVT_KPMG,
+            configs.Environment.BVT_BDO,
+            configs.Environment.BVT_RSM,
         ),
-        default=constants.Environment.DEVLOCAL,
+        default=configs.Environment.DEVLOCAL,
         help="""Specifies the test enviroment to use. Default: dev local.
                 If you want to choose other envrioments, explicitly indicate that.
                 Example: (--test_env=devInt)""",
@@ -184,7 +184,7 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
 
 def _capture_screenshot():
     """截图保存为base64"""
-    now_time, screen_file = cm.screen_path
+    now_time, screen_file = pm.screen_path
     driver.save_screenshot(screen_file)
     allure.attach.file(screen_file,
                        "失败截图{}".format(now_time),

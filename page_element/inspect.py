@@ -26,9 +26,9 @@ def inspect_element():
                 if pattern not in cm.LOCATE_MODE:
                     raise Exception('There is not specific type of 【%s】 in file %s' % (k, _path))
                 elif pattern == 'xpath':
-                    assert '//' in value, 'Element【%s】 in file %s is not in correct xpath format' % (k, _path)
+                    assert '/' in value, 'Element【%s】 in file %s is not in correct xpath format' % (k, _path)
                 elif pattern == 'css':
-                    assert '//' not in value, 'Element【%s】 in file %s is not in correct css format' % (k, _path)
+                    assert '/' not in value, 'Element【%s】 in file %s is not in correct css format' % (k, _path)
                 else:
                     assert value, 'Element【%s】 in file %s is not matching between its type and format' % (k, _path)
 

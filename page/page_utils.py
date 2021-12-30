@@ -33,11 +33,12 @@ from selenium.common.exceptions import NoSuchWindowException
 from selenium.common.exceptions import StaleElementReferenceException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
-from seleniumbase.config import settings
 
 from utils import exception_messages as em_utils
+from config import configs
 
 
+# url operations
 def get_domain_url(url):
     """
     Use this to convert a url like this:
@@ -54,6 +55,97 @@ def get_domain_url(url):
     return domain_url
 
 
+# determine selector types
+def is_xpath_selector(selector):
+    """
+    A basic method to determine if a selector is an xpath selector.
+    """
+    if (
+            selector.startswith("/")
+            or selector.startswith("./")
+            or selector.startswith("(")
+    ):
+        return True
+    return False
+
+
+def is_link_text_selector(selector):
+    """
+    A basic method to determine if a selector is a link text selector.
+    """
+    if (
+            selector.startswith("link=")
+            or selector.startswith("link_text=")
+            or selector.startswith("text=")
+    ):
+        return True
+    return False
+
+
+def is_partial_link_text_selector(selector):
+    """
+    A basic method to determine if a selector is a partial link text selector.
+    """
+    if (
+            selector.startswith("partial_link=")
+            or selector.startswith("partial_link_text=")
+            or selector.startswith("partial_text=")
+            or selector.startswith("p_link=")
+            or selector.startswith("p_link_text=")
+            or selector.startswith("p_text=")
+    ):
+        return True
+    return False
+
+
+def is_name_selector(selector):
+    """
+    A basic method to determine if a selector is a name selector.
+    """
+    if selector.startswith("name=") or selector.startswith("&"):
+        return True
+    return False
+
+
+def get_link_text_from_selector(selector):
+    """
+    A basic method to get the link text from a link text selector.
+    """
+    if selector.startswith("link="):
+        return selector[len("link="):]
+    elif selector.startswith("link_text="):
+        return selector[len("link_text="):]
+    elif selector.startswith("text="):
+        return selector[len("text="):]
+    return selector
+
+
+def get_partial_link_text_from_selector(selector):
+    """
+    A basic method to get the partial link text from a partial link selector.
+    """
+    if selector.startswith("partial_link="):
+        return selector[len("partial_link="):]
+    elif selector.startswith("partial_link_text="):
+        return selector[len("partial_link_text="):]
+    elif selector.startswith("partial_text="):
+        return selector[len("partial_text="):]
+    elif selector.startswith("p_link="):
+        return selector[len("p_link="):]
+    elif selector.startswith("p_link_text="):
+        return selector[len("p_link_text="):]
+    elif selector.startswith("p_text="):
+        return selector[len("p_text="):]
+    return selector
+
+
+# webdriver timeout exception message function
+def timeout_exception(exception, message):
+    exception, message = em_utils.format_exc(exception, message)
+    raise exception(message)
+
+
+# if conditions for elements
 def is_element_present(driver, selector, by=By.XPATH):
     """
     Returns whether the specified element selector is present on the page.
@@ -175,18 +267,13 @@ def hover_element(driver, element):
     hover.perform()
 
 
-def timeout_exception(exception, message):
-    exception, message = em_utils.format_exc(exception, message)
-    raise exception(message)
-
-
 def hover_and_click(
         driver,
         hover_selector,
         click_selector,
         hover_by=By.CSS_SELECTOR,
         click_by=By.CSS_SELECTOR,
-        timeout=settings.SMALL_TIMEOUT,
+        timeout=configs.SMALL_TIMEOUT,
 ):
     """
     Fires the hover event for a specified element by a given selector, then
@@ -230,7 +317,7 @@ def hover_element_and_click(
         element,
         click_selector,
         click_by=By.CSS_SELECTOR,
-        timeout=settings.SMALL_TIMEOUT,
+        timeout=configs.SMALL_TIMEOUT,
 ):
     """
     Similar to hover_and_click(), but assumes top element is already found.
@@ -265,7 +352,7 @@ def hover_element_and_double_click(
         element,
         click_selector,
         click_by=By.CSS_SELECTOR,
-        timeout=settings.SMALL_TIMEOUT,
+        timeout=configs.SMALL_TIMEOUT,
 ):
     start_ms = time.time() * 1000.0
     stop_ms = start_ms + (timeout * 1000.0)
@@ -296,7 +383,7 @@ def hover_element_and_double_click(
 
 
 def wait_for_element_present(
-        driver, selector, by=By.XPATH, timeout=settings.LARGE_TIMEOUT
+        driver, selector, by=By.XPATH, timeout=configs.LARGE_TIMEOUT
 ):
     """
     Searches for the specified element by the given selector. Returns the
@@ -338,7 +425,7 @@ def wait_for_element_present(
 
 
 def wait_for_element_visible(
-        driver, selector, by=By.CSS_SELECTOR, timeout=settings.LARGE_TIMEOUT
+        driver, selector, by=By.CSS_SELECTOR, timeout=configs.LARGE_TIMEOUT
 ):
     """
     Searches for the specified element by the given selector. Returns the
@@ -403,7 +490,7 @@ def wait_for_element_visible(
 
 
 def wait_for_text_visible(
-        driver, text, selector, by=By.CSS_SELECTOR, timeout=settings.LARGE_TIMEOUT
+        driver, text, selector, by=By.CSS_SELECTOR, timeout=configs.LARGE_TIMEOUT
 ):
     """
     Searches for the specified element by the given selector. Returns the
@@ -427,7 +514,7 @@ def wait_for_text_visible(
     start_ms = time.time() * 1000.0
     stop_ms = start_ms + (timeout * 1000.0)
     for x in range(int(timeout * 10)):
-        s_utils.check_if_time_limit_exceeded()
+        em_utils.check_if_time_limit_exceeded()
         try:
             element = driver.find_element(by=by, value=selector)
             is_present = True
@@ -462,7 +549,7 @@ def wait_for_text_visible(
 
 
 def wait_for_exact_text_visible(
-        driver, text, selector, by=By.CSS_SELECTOR, timeout=settings.LARGE_TIMEOUT
+        driver, text, selector, by=By.CSS_SELECTOR, timeout=configs.LARGE_TIMEOUT
 ):
     """
     Searches for the specified element by the given selector. Returns the
@@ -486,7 +573,7 @@ def wait_for_exact_text_visible(
     start_ms = time.time() * 1000.0
     stop_ms = start_ms + (timeout * 1000.0)
     for x in range(int(timeout * 10)):
-        s_utils.check_if_time_limit_exceeded()
+        em_utils.check_if_time_limit_exceeded()
         try:
             element = driver.find_element(by=by, value=selector)
             is_present = True
@@ -526,7 +613,7 @@ def wait_for_attribute(
         attribute,
         value=None,
         by=By.CSS_SELECTOR,
-        timeout=settings.LARGE_TIMEOUT,
+        timeout=configs.LARGE_TIMEOUT,
 ):
     """
     Searches for the specified element attribute by the given selector.
@@ -553,7 +640,7 @@ def wait_for_attribute(
     start_ms = time.time() * 1000.0
     stop_ms = start_ms + (timeout * 1000.0)
     for x in range(int(timeout * 10)):
-        s_utils.check_if_time_limit_exceeded()
+        em_utils.check_if_time_limit_exceeded()
         try:
             element = driver.find_element(by=by, value=selector)
             element_present = True
@@ -607,7 +694,7 @@ def wait_for_attribute(
 
 
 def wait_for_element_absent(
-        driver, selector, by=By.CSS_SELECTOR, timeout=settings.LARGE_TIMEOUT
+        driver, selector, by=By.CSS_SELECTOR, timeout=configs.LARGE_TIMEOUT
 ):
     """
     Searches for the specified element by the given selector.
@@ -622,7 +709,7 @@ def wait_for_element_absent(
     start_ms = time.time() * 1000.0
     stop_ms = start_ms + (timeout * 1000.0)
     for x in range(int(timeout * 10)):
-        s_utils.check_if_time_limit_exceeded()
+        em_utils.check_if_time_limit_exceeded()
         try:
             driver.find_element(by=by, value=selector)
             now_ms = time.time() * 1000.0
@@ -643,7 +730,7 @@ def wait_for_element_absent(
 
 
 def wait_for_element_not_visible(
-        driver, selector, by=By.CSS_SELECTOR, timeout=settings.LARGE_TIMEOUT
+        driver, selector, by=By.CSS_SELECTOR, timeout=configs.LARGE_TIMEOUT
 ):
     """
     Searches for the specified element by the given selector.
@@ -658,7 +745,7 @@ def wait_for_element_not_visible(
     start_ms = time.time() * 1000.0
     stop_ms = start_ms + (timeout * 1000.0)
     for x in range(int(timeout * 10)):
-        s_utils.check_if_time_limit_exceeded()
+        em_utils.check_if_time_limit_exceeded()
         try:
             element = driver.find_element(by=by, value=selector)
             if element.is_displayed():
@@ -682,7 +769,7 @@ def wait_for_element_not_visible(
 
 
 def wait_for_text_not_visible(
-        driver, text, selector, by=By.CSS_SELECTOR, timeout=settings.LARGE_TIMEOUT
+        driver, text, selector, by=By.CSS_SELECTOR, timeout=configs.LARGE_TIMEOUT
 ):
     """
     Searches for the text in the element of the given selector on the page.
@@ -700,7 +787,7 @@ def wait_for_text_not_visible(
     start_ms = time.time() * 1000.0
     stop_ms = start_ms + (timeout * 1000.0)
     for x in range(int(timeout * 10)):
-        s_utils.check_if_time_limit_exceeded()
+        em_utils.check_if_time_limit_exceeded()
         if not is_text_visible(driver, text, selector, by=by):
             return True
         now_ms = time.time() * 1000.0
@@ -725,7 +812,7 @@ def wait_for_attribute_not_present(
         attribute,
         value=None,
         by=By.CSS_SELECTOR,
-        timeout=settings.LARGE_TIMEOUT
+        timeout=configs.LARGE_TIMEOUT
 ):
     """
     Searches for the specified element attribute by the given selector.
@@ -743,7 +830,7 @@ def wait_for_attribute_not_present(
     start_ms = time.time() * 1000.0
     stop_ms = start_ms + (timeout * 1000.0)
     for x in range(int(timeout * 10)):
-        s_utils.check_if_time_limit_exceeded()
+        em_utils.check_if_time_limit_exceeded()
         if not is_attribute_present(
                 driver, selector, attribute, value=value, by=by
         ):
@@ -901,7 +988,7 @@ def save_test_failure_data(driver, name, browser_type, folder=None):
     failure_data_file.close()
 
 
-def wait_for_and_accept_alert(driver, timeout=settings.LARGE_TIMEOUT):
+def wait_for_and_accept_alert(driver, timeout=configs.LARGE_TIMEOUT):
     """
     Wait for and accept an alert. Returns the text from the alert.
     @Params
@@ -914,7 +1001,7 @@ def wait_for_and_accept_alert(driver, timeout=settings.LARGE_TIMEOUT):
     return alert_text
 
 
-def wait_for_and_dismiss_alert(driver, timeout=settings.LARGE_TIMEOUT):
+def wait_for_and_dismiss_alert(driver, timeout=configs.LARGE_TIMEOUT):
     """
     Wait for and dismiss an alert. Returns the text from the alert.
     @Params
@@ -927,7 +1014,7 @@ def wait_for_and_dismiss_alert(driver, timeout=settings.LARGE_TIMEOUT):
     return alert_text
 
 
-def wait_for_and_switch_to_alert(driver, timeout=settings.LARGE_TIMEOUT):
+def wait_for_and_switch_to_alert(driver, timeout=configs.LARGE_TIMEOUT):
     """
     Wait for a browser alert to appear, and switch to it. This should be usable
     as a drop-in replacement for driver.switch_to.alert when the alert box
@@ -939,7 +1026,7 @@ def wait_for_and_switch_to_alert(driver, timeout=settings.LARGE_TIMEOUT):
     start_ms = time.time() * 1000.0
     stop_ms = start_ms + (timeout * 1000.0)
     for x in range(int(timeout * 10)):
-        s_utils.check_if_time_limit_exceeded()
+        em_utils.check_if_time_limit_exceeded()
         try:
             alert = driver.switch_to.alert
             # Raises exception if no alert present
@@ -954,7 +1041,7 @@ def wait_for_and_switch_to_alert(driver, timeout=settings.LARGE_TIMEOUT):
     timeout_exception(Exception, message)
 
 
-def switch_to_frame(driver, frame, timeout=settings.SMALL_TIMEOUT):
+def switch_to_frame(driver, frame, timeout=configs.SMALL_TIMEOUT):
     """
     Wait for an iframe to appear, and switch to it. This should be
     usable as a drop-in replacement for driver.switch_to.frame().
@@ -968,7 +1055,7 @@ def switch_to_frame(driver, frame, timeout=settings.SMALL_TIMEOUT):
     start_ms = time.time() * 1000.0
     stop_ms = start_ms + (timeout * 1000.0)
     for x in range(int(timeout * 10)):
-        s_utils.check_if_time_limit_exceeded()
+        em_utils.check_if_time_limit_exceeded()
         try:
             driver.switch_to.frame(frame)
             return True
@@ -1001,7 +1088,7 @@ def switch_to_frame(driver, frame, timeout=settings.SMALL_TIMEOUT):
     timeout_exception(Exception, message)
 
 
-def switch_to_window(driver, window, timeout=settings.SMALL_TIMEOUT):
+def switch_to_window(driver, window, timeout=configs.SMALL_TIMEOUT):
     """
     Wait for a window to appear, and switch to it. This should be usable
     as a drop-in replacement for driver.switch_to.window().
@@ -1014,7 +1101,7 @@ def switch_to_window(driver, window, timeout=settings.SMALL_TIMEOUT):
     stop_ms = start_ms + (timeout * 1000.0)
     if isinstance(window, int):
         for x in range(int(timeout * 10)):
-            s_utils.check_if_time_limit_exceeded()
+            em_utils.check_if_time_limit_exceeded()
             try:
                 window_handle = driver.window_handles[window]
                 driver.switch_to.window(window_handle)
@@ -1036,7 +1123,7 @@ def switch_to_window(driver, window, timeout=settings.SMALL_TIMEOUT):
     else:
         window_handle = window
         for x in range(int(timeout * 10)):
-            s_utils.check_if_time_limit_exceeded()
+            em_utils.check_if_time_limit_exceeded()
             try:
                 driver.switch_to.window(window_handle)
                 return True

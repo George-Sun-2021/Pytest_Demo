@@ -22,7 +22,7 @@ class Element(object):
         data = self.data.get(item)
         if data:
             name, value = data.split('==')
-            return conf.LOCATE_MODE[name], value
+            return value, conf.LOCATE_MODE[name]
         raise ArithmeticError("The keyword: {} is not in {}".format(item, self.file_name))
 
 

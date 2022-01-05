@@ -7,6 +7,7 @@ selenium基类
 import sys
 
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import (
@@ -61,93 +62,27 @@ class BasePage(object):
             raise TimeoutException("open'%s' timeout, please check the network or web server correct or not" % url)
 
     def click(self, selector, by=By.XPATH, delay=0, scroll=True):
-        original_selector = selector
-        original_by = by
         selector, by = self.__recalculate_selector(selector, by)
         if delay and (type(delay) in [int, float]) and delay > 0:
             time.sleep(delay)
-        if page_utils.is_link_text_selector(selector) or by == By.LINK_TEXT:
-            if not self.is_link_text_visible(selector):
-                # Handle a special case of links hidden in dropdowns
-                self.click_link_text(selector, timeout=timeout)
-                return
-        if (
-                page_utils.is_partial_link_text_selector(selector)
-                or by == By.PARTIAL_LINK_TEXT
-        ):
-            if not self.is_partial_link_text_visible(selector):
-                # Handle a special case of partial links hidden in dropdowns
-                self.click_partial_link_text(selector, timeout=timeout)
-                return
-        element = page_actions.wait_for_element_visible(
-            self.driver, selector, by, timeout=timeout
-        )
+        element = self.wait_for_element_visible(selector, by)
         if scroll:
             self.__scroll_to_element(element, selector, by)
-        pre_action_url = self.driver.current_url
-        pre_window_count = len(self.driver.window_handles)
         try:
-            if self.browser == "ie" and by == By.LINK_TEXT:
-                # An issue with clicking Link Text on IE means using jquery
-                self.__jquery_click(selector, by=by)
-            elif self.browser == "safari":
-                if by == By.LINK_TEXT:
-                    self.__jquery_click(selector, by=by)
-                else:
-                    self.__js_click(selector, by=by)
-            else:
-                href = None
-                new_tab = False
-                onclick = None
-                try:
-                    if self.headless and element.tag_name == "a":
-                        # Handle a special case of opening a new tab (headless)
-                        href = element.get_attribute("href").strip()
-                        onclick = element.get_attribute("onclick")
-                        target = element.get_attribute("target")
-                        if target == "_blank":
-                            new_tab = True
-                        if new_tab and self.__looks_like_a_page_url(href):
-                            if onclick:
-                                try:
-                                    self.execute_script(onclick)
-                                except Exception:
-                                    pass
-                            current_window = self.driver.current_window_handle
-                            self.open_new_window()
-                            try:
-                                self.open(href)
-                            except Exception:
-                                pass
-                            self.switch_to_window(current_window)
-                            return
-                except Exception:
-                    pass
-                # Normal click
-                element.click()
+            # Normal click
+            element.click()
         except StaleElementReferenceException:
-            self.wait_for_ready_state_complete()
             time.sleep(0.16)
-            element = page_actions.wait_for_element_visible(
-                self.driver, selector, by, timeout=timeout
-            )
+            element = self.wait_for_element_visible(selector, by)
             try:
                 self.__scroll_to_element(element, selector, by)
             except Exception:
                 pass
-            if self.browser == "safari":
-                if by == By.LINK_TEXT:
-                    self.__jquery_click(selector, by=by)
-                else:
-                    self.__js_click(selector, by=by)
             else:
                 element.click()
         except ENI_Exception:
-            self.wait_for_ready_state_complete()
             time.sleep(0.1)
-            element = page_actions.wait_for_element_visible(
-                self.driver, selector, by, timeout=timeout
-            )
+            element = self.wait_for_element_visible(selector, by)
             href = None
             new_tab = False
             onclick = None
@@ -168,7 +103,7 @@ class BasePage(object):
                         current_window = self.driver.current_window_handle
                         self.open_new_window()
                         try:
-                            self.open(href)
+                            self.visit(href)
                         except Exception:
                             pass
                         self.switch_to_window(current_window)
@@ -176,72 +111,112 @@ class BasePage(object):
             except Exception:
                 pass
             self.__scroll_to_element(element, selector, by)
-            if self.browser == "firefox" or self.browser == "safari":
-                if by == By.LINK_TEXT or "contains(" in selector:
-                    self.__jquery_click(selector, by=by)
-                else:
-                    self.__js_click(selector, by=by)
-            else:
-                element.click()
-        except (WebDriverException, MoveTargetOutOfBoundsException):
-            self.wait_for_ready_state_complete()
+            element.click()
+
+    def type(self, selector, text, by=By.XPATH):
+        """Same as self.update_text()
+        This method updates an element's text field with new text.
+        Has multiple parts:
+        * Waits for the element to be visible.
+        * Waits for the element to be interactive.
+        * Clears the text field.
+        * Types in the new text.
+        * Hits Enter/Submit (if the text ends in "\n").
+        @Params
+        selector - the selector of the text field
+        text - the new text to type into the text field
+        by - the type of selector to search by (Default: CSS Selector)
+        timeout - how long to wait for the selector to be visible
+        retry - if True, use JS if the Selenium text update fails
+        DO NOT confuse self.type() with Python type()! They are different!
+        """
+        selector, by = self.__recalculate_selector(selector, by)
+        self.update_text(selector, text, by=by)
+
+    def clear(self, selector, by=By.XPATH):
+        """This method clears an element's text field.
+        A clear() is already included with most methods that type text,
+        such as self.type(), self.update_text(), etc.
+        Does not use Demo Mode highlights, mainly because we expect
+        that some users will be calling an unnecessary clear() before
+        calling a method that already includes clear() as part of it.
+        In case websites trigger an autofill after clearing a field,
+        add backspaces to make sure autofill doesn't undo the clear.
+        @Params
+        selector - the selector of the text field
+        by - the type of selector to search by (Default: CSS Selector)
+        timeout - how long to wait for the selector to be visible
+        """
+        selector, by = self.__recalculate_selector(selector, by)
+        element = self.wait_for_element_visible(selector, by=by)
+        self.scroll_to(selector, by=by)
+        try:
+            element.clear()
+            backspaces = Keys.BACK_SPACE * 42  # Autofill Defense
+            element.send_keys(backspaces)
+        except (StaleElementReferenceException, ENI_Exception):
+            time.sleep(0.16)
+            element = self.wait_for_element_visible(selector, by=by)
+            element.clear()
             try:
-                self.__js_click(selector, by=by)
+                backspaces = Keys.BACK_SPACE * 42  # Autofill Defense
+                element.send_keys(backspaces)
             except Exception:
-                try:
-                    self.__jquery_click(selector, by=by)
-                except Exception:
-                    # One more attempt to click on the element
-                    element = page_actions.wait_for_element_visible(
-                        self.driver, selector, by, timeout=timeout
-                    )
-                    element.click()
-        latest_window_count = len(self.driver.window_handles)
-        if (
-                latest_window_count > pre_window_count
-                and (
-                self.recorder_mode
-                or (
-                        settings.SWITCH_TO_NEW_TABS_ON_CLICK
-                        and self.driver.current_url == pre_action_url
-                )
-        )
-        ):
-            self.__switch_to_newest_window_if_not_blank()
-        if settings.WAIT_FOR_RSC_ON_CLICKS:
-            self.wait_for_ready_state_complete()
-        else:
-            # A smaller subset of self.wait_for_ready_state_complete()
-            self.wait_for_angularjs(timeout=settings.MINI_TIMEOUT)
-            if self.driver.current_url != pre_action_url:
-                self.__ad_block_as_needed()
-        if self.demo_mode:
-            if self.driver.current_url != pre_action_url:
-                self.__demo_mode_pause_if_active()
+                pass
+        except Exception:
+            element.clear()
+
+    def submit(self, selector, by=By.XPATH):
+        """ Alternative to self.driver.find_element_by_*(SELECTOR).submit() """
+        selector, by = self.__recalculate_selector(selector, by)
+        element = self.wait_for_element_visible(selector, by=by)
+        element.submit()
+
+    def refresh(self):
+        """ The shorter version of self.refresh_page() """
+        self.refresh_page()
+
+    def get_title(self):
+        """ The shorter version of self.get_page_title() """
+        return self.get_page_title()
+
+
+
+
+
+    def scroll_to(self, selector, by=By.XPATH):
+        """ Fast scroll to destination """
+        element = self.wait_for_element_visible(selector, by=by)
+        try:
+            self.__scroll_to_element(element, selector, by)
+        except (StaleElementReferenceException, ENI_Exception):
+            time.sleep(0.12)
+            element = self.wait_for_element_visible(selector, by=by)
+            self.__scroll_to_element(element, selector, by)
+
+    def add_text(self, selector, text, by=By.XPATH):
+        """The more-reliable version of driver.send_keys()
+        Similar to update_text(), but won't clear the text field first."""
+        selector, by = self.__recalculate_selector(selector, by)
+        element = self.wait_for_element_visible(selector, by=by)
+        self.__scroll_to_element(element, selector, by)
+        if type(text) is int or type(text) is float:
+            text = str(text)
+        try:
+            if not text.endswith("\n"):
+                element.send_keys(text)
             else:
-                self.__demo_mode_pause_if_active(tiny=True)
-        elif self.slow_mode:
-            self.__slow_mode_pause_if_active()
+                element.send_keys(text[:-1])
+                element.send_keys(Keys.RETURN)
+        except (StaleElementReferenceException, ENI_Exception):
+            time.sleep(0.16)
+            element = self.wait_for_element_visible(selector, by=by)
+            if not text.endswith("\n"):
+                element.send_keys(text)
+            else:
+                element.send_keys(text[:-1])
+                element.send_keys(Keys.RETURN)
 
-    def elements_num(self, locator):
-        """获取相同元素的个数"""
-        number = len(self.find_elements(locator))
-        log.info("相同元素：{}".format((locator, number)))
-        return number
-
-    def input_text(self, locator, txt):
-        """输入(输入前先清空)"""
-        sleep(0.5)
-        ele = self.find_element(locator)
-        ele.clear()
-        ele.send_keys(txt)
-        log.info("输入文本：{}".format(txt))
-
-    def is_click(self, locator):
-        """点击"""
-        self.find_element(locator).click()
-        sleep()
-        log.info("点击元素：{}".format(locator))
 
     def element_text(self, locator):
         """获取当前的text"""
@@ -253,11 +228,6 @@ class BasePage(object):
     def get_source(self):
         """获取页面源代码"""
         return self.driver.page_source
-
-    def refresh(self):
-        """刷新页面F5"""
-        self.driver.refresh()
-        self.driver.implicitly_wait(30)
 
     def set_window_size(self, width, height):
         self.__check_scope()
@@ -321,6 +291,28 @@ class BasePage(object):
             self.driver, partial_link_text, by=By.PARTIAL_LINK_TEXT
         )
 
+    def is_link_text_present(self, link_text):
+        """Returns True if the link text appears in the HTML of the page.
+        The element doesn't need to be visible,
+        such as elements hidden inside a dropdown selection."""
+        soup = self.get_beautiful_soup()
+        html_links = soup.find_all("a")
+        for html_link in html_links:
+            if html_link.text.strip() == link_text.strip():
+                return True
+        return False
+
+    def is_partial_link_text_present(self, link_text):
+        """Returns True if the partial link appears in the HTML of the page.
+        The element doesn't need to be visible,
+        such as elements hidden inside a dropdown selection."""
+        soup = self.get_beautiful_soup()
+        html_links = soup.find_all("a")
+        for html_link in html_links:
+            if link_text.strip() in html_link.text.strip():
+                return True
+        return False
+
     ############
 
     # Bases (Basic page actions)
@@ -357,6 +349,61 @@ class BasePage(object):
                 selector = self.convert_css_to_xpath(selector)
                 by = By.XPATH
         return (selector, by)
+
+    @staticmethod
+    def __looks_like_a_page_url(url):
+        """Returns True if the url parameter looks like a URL. This method
+        is slightly more lenient than page_utils.is_valid_url(url) due to
+        possible typos when calling self.get(url), which will try to
+        navigate to the page if a URL is detected, but will instead call
+        self.get_element(URL_AS_A_SELECTOR) if the input in not a URL."""
+        if (
+                url.startswith("http:")
+                or url.startswith("https:")
+                or url.startswith("://")
+                or url.startswith("chrome:")
+                or url.startswith("about:")
+                or url.startswith("data:")
+                or url.startswith("file:")
+                or url.startswith("edge:")
+                or url.startswith("opera:")
+                or url.startswith("view-source:")
+        ):
+            return True
+        else:
+            return False
+
+    def get_page_source(self):
+        return self.driver.page_source
+
+    def get_beautiful_soup(self, source=None):
+        """BeautifulSoup is a toolkit for dissecting an HTML document
+        and extracting what you need. It's great for screen-scraping!
+        See: https://www.crummy.com/software/BeautifulSoup/bs4/doc/
+        """
+        from bs4 import BeautifulSoup
+
+        if not source:
+            source = self.get_page_source()
+        soup = BeautifulSoup(source, "html.parser")
+        return soup
+
+    def execute_script(self, script, *args, **kwargs):
+        return self.driver.execute_script(script, *args, **kwargs)
+
+    ############
+
+    def __check_browser(self):
+        """This method raises an exception if the window was already closed."""
+        active_window = None
+        try:
+            active_window = self.driver.current_window_handle  # Fails if None
+        except Exception:
+            pass
+        if not active_window:
+            raise NoSuchWindowException("Active window was already closed!")
+
+    ############
 
     ############
 
@@ -615,6 +662,106 @@ class BasePage(object):
         except Exception:
             message = "Elements {%s} were not visible after %s seconds!" % (selector, self.timeout)
             logging.info(page_utils.timeout_exception(ElementNotVisibleException, message))
+
+    def __scroll_to_element(self, element, selector=None, by=By.XPATH):
+        success = page_utils.scroll_to_element(self.driver, element)
+        if not success and selector:
+            element = self.wait_for_element_visible(selector, by)
+
+    def open_new_window(self, switch_to=True):
+        """ Opens a new browser tab/window and switches to it by default. """
+        self.__check_browser()  # Current window must exist to open a new one
+        self.driver.execute_script("window.open('');")
+        time.sleep(0.01)
+        if switch_to:
+            self.switch_to_newest_window()
+            time.sleep(0.01)
+
+    def switch_to_window(self, window):
+        """ Switches control of the browser to the specified window.
+            The window can be an integer: 0 -> 1st tab, 1 -> 2nd tab, etc...
+                Or it can be a list item from self.driver.window_handles """
+        if isinstance(window, int):
+            try:
+                window_handle = self.wait.until(self.driver.window_handles[window])
+                self.driver.switch_to.window(window_handle)
+                return True
+            except Exception:
+                message = "Window {%s} was not present after %s seconds!" % (window, self.timeout)
+                page_utils.timeout_exception(Exception, message)
+        else:
+            window_handle = window
+            try:
+                self.wait.until(self.driver.switch_to.window(window_handle))
+                return True
+            except Exception:
+                message = "Window {%s} was not present after %s seconds!" % (window, self.timeout)
+                page_utils.timeout_exception(Exception, message)
+
+    def switch_to_newest_window(self):
+        self.switch_to_window(len(self.driver.window_handles) - 1)
+
+    def update_text(self, selector, text, by=By.XPATH):
+        """This method updates an element's text field with new text.
+        Has multiple parts:
+        * Waits for the element to be visible.
+        * Waits for the element to be interactive.
+        * Clears the text field.
+        * Types in the new text.
+        * Hits Enter/Submit (if the text ends in "\n").
+        @Params
+        selector - the selector of the text field
+        text - the new text to type into the text field
+        by - the type of selector to search by (Default: CSS Selector)
+        timeout - how long to wait for the selector to be visible
+        retry - if True, use JS if the Selenium text update fails
+        """
+        selector, by = self.__recalculate_selector(selector, by)
+        element = self.wait_for_element_visible(selector, by=by)
+        self.__scroll_to_element(element, selector, by)
+        try:
+            element.clear()
+            backspaces = Keys.BACK_SPACE * 42  # Is the answer to everything
+            element.send_keys(backspaces)  # In case autocomplete keeps text
+        except (StaleElementReferenceException, ENI_Exception):
+            time.sleep(0.16)
+            element = self.wait_for_element_visible(selector, by=by)
+            try:
+                element.clear()
+            except Exception:
+                pass  # Clearing the text field first might not be necessary
+        except Exception:
+            pass  # Clearing the text field first might not be necessary
+        if type(text) is int or type(text) is float:
+            text = str(text)
+        try:
+            if not text.endswith("\n"):
+                element.send_keys(text)
+            else:
+                element.send_keys(text[:-1])
+                element.send_keys(Keys.RETURN)
+        except (StaleElementReferenceException, ENI_Exception):
+            time.sleep(0.16)
+            element = self.wait_for_element_visible(selector, by=by)
+            element.clear()
+            if not text.endswith("\n"):
+                element.send_keys(text)
+            else:
+                element.send_keys(text[:-1])
+                element.send_keys(Keys.RETURN)
+
+    def refresh_page(self):
+        page_utils.clear_out_console_logs(self.driver)
+        self.driver.refresh()
+
+    def get_page_title(self):
+        self.wait_for_element_present("title")
+        time.sleep(0.03)
+        return self.driver.title
+
+    ############
+
+    # deal with link texts
 
 
 if __name__ == "__main__":

@@ -23,7 +23,7 @@ class TestSimple:
     def test_003(self, drivers):
         """搜索"""
         base_page = BasePage(drivers)
-        base_page.type("//*[@id='kw']", text="selenium")
+        base_page.type("#kw", text="selenium")
         sleep(1)
         base_page.click(*Element('search')['搜索按钮'])
         result = re.search(r'selenium', base_page.get_page_source)

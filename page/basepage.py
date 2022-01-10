@@ -62,7 +62,7 @@ class BasePage(object):
         except TimeoutException:
             raise TimeoutException("open'%s' timeout, please check the network or web server correct or not" % url)
 
-    def click(self, selector, by=By.XPATH, delay=0, scroll=True):
+    def click(self, selector, by=By.CSS_SELECTOR, delay=0, scroll=True):
         """
         click the button/link
         @Params
@@ -121,7 +121,7 @@ class BasePage(object):
             self.__scroll_to_element(element, selector, by)
             element.click()
 
-    def type(self, selector, by=By.XPATH, text=None):
+    def type(self, selector, by=By.CSS_SELECTOR, text=None):
         """Same as self.update_text()
         This method updates an element's text field with new text.
         Has multiple parts:
@@ -138,7 +138,7 @@ class BasePage(object):
         selector, by = self.__recalculate_selector(selector, by)
         self.update_text(selector, by=by, text=text)
 
-    def clear(self, selector, by=By.XPATH):
+    def clear(self, selector, by=By.CSS_SELECTOR):
         """This method clears an element's text field.
         A clear() is already included with most methods that type text,
         such as self.type(), self.update_text(), etc.
@@ -170,7 +170,7 @@ class BasePage(object):
         except Exception:
             element.clear()
 
-    def submit(self, selector, by=By.XPATH):
+    def submit(self, selector, by=By.CSS_SELECTOR):
         """ Alternative to self.driver.find_element_by_*(SELECTOR).submit() """
         selector, by = self.__recalculate_selector(selector, by)
         element = self.wait_for_element_visible(selector, by=by)
@@ -180,7 +180,7 @@ class BasePage(object):
         """ The shorter version of self.get_page_title() """
         return self.get_page_title()
 
-    def scroll_to(self, selector, by=By.XPATH):
+    def scroll_to(self, selector, by=By.CSS_SELECTOR):
         """ Fast scroll to destination """
         element = self.wait_for_element_visible(selector, by=by)
         try:
@@ -200,7 +200,7 @@ class BasePage(object):
         """ The shorter version of self.refresh_page() """
         self.refresh_page()
 
-    def get_text(self, selector, by=By.XPATH):
+    def get_text(self, selector, by=By.CSS_SELECTOR):
         selector, by = self.__recalculate_selector(selector, by)
         element = self.wait_for_element_visible(selector, by)
         try:
@@ -211,7 +211,7 @@ class BasePage(object):
             element_text = element.text
         return element_text
 
-    def add_text(self, selector, by=By.XPATH, text=None):
+    def add_text(self, selector, by=By.CSS_SELECTOR, text=None):
         """The more-reliable version of driver.send_keys()
         Similar to update_text(), but won't clear the text field first."""
         selector, by = self.__recalculate_selector(selector, by)
@@ -234,7 +234,7 @@ class BasePage(object):
                 element.send_keys(text[:-1])
                 element.send_keys(Keys.RETURN)
 
-    def find_visible_elements(self, selector, by=By.XPATH):
+    def find_visible_elements(self, selector, by=By.CSS_SELECTOR):
         """
         Finds all WebElements that match a selector and are visible.
         Similar to webdriver.find_elements.
@@ -305,19 +305,19 @@ class BasePage(object):
 
     # if conditions for elements
 
-    def is_element_present(self, selector, by=By.XPATH):
+    def is_element_present(self, selector, by=By.CSS_SELECTOR):
         return page_utils.is_element_present(self.driver, selector, by)
 
-    def is_element_visible(self, selector, by=By.XPATH):
+    def is_element_visible(self, selector, by=By.CSS_SELECTOR):
         return page_utils.is_element_visible(self.driver, selector, by)
 
-    def is_element_enabled(self, selector, by=By.XPATH):
+    def is_element_enabled(self, selector, by=By.CSS_SELECTOR):
         return page_utils.is_element_enabled(self.driver, selector, by)
 
-    def is_text_visible(self, text, selector="html", by=By.XPATH):
+    def is_text_visible(self, text, selector="html", by=By.CSS_SELECTOR):
         return page_utils.is_text_visible(self.driver, text, selector, by)
 
-    def is_attribute_present(self, selector, attribute, value=None, by=By.XPATH):
+    def is_attribute_present(self, selector, attribute, value=None, by=By.CSS_SELECTOR):
         """Returns True if the element attribute/value is found.
         If the value is not specified, the attribute only needs to exist."""
         return page_utils.is_attribute_present(
@@ -455,7 +455,7 @@ class BasePage(object):
 
     # find element(s) with wait timeout
 
-    def wait_for_element_present(self, selector, by=By.XPATH):
+    def wait_for_element_present(self, selector, by=By.CSS_SELECTOR):
         """
         Searches for the specified element by the given selector. Returns the
         element object if it exists in the HTML. (The element can be invisible.)
@@ -475,7 +475,7 @@ class BasePage(object):
             message = "Element {%s} was not present after %s seconds!" % (selector, self.timeout)
         logging.info(page_utils.timeout_exception(NoSuchElementException, message))
 
-    def wait_for_element_visible(self, selector, by=By.XPATH):
+    def wait_for_element_visible(self, selector, by=By.CSS_SELECTOR):
         """
         Searches for the specified element by the given selector. Returns the
         element object if the element is present and visible on the page.
@@ -497,7 +497,7 @@ class BasePage(object):
             message = "Element {%s} was not visible after %s seconds!" % (selector, self.timeout)
             logging.info(page_utils.timeout_exception(ElementNotVisibleException, message))
 
-    def wait_for_element_clickable(self, selector, by=By.XPATH):
+    def wait_for_element_clickable(self, selector, by=By.CSS_SELECTOR):
         """
         Searches for the specified element by the given selector. Returns the
         element object if the element is present and visible on the page.
@@ -519,7 +519,7 @@ class BasePage(object):
             message = "Element {%s} was not clickable after %s seconds!" % (selector, self.timeout)
             logging.info(page_utils.timeout_exception(ElementNotVisibleException, message))
 
-    def wait_for_text_visible(self, text, selector, by=By.XPATH):
+    def wait_for_text_visible(self, text, selector, by=By.CSS_SELECTOR):
         """
         Searches for the specified element by the given selector. Returns the
         element object if the text is present in the element and visible
@@ -540,7 +540,7 @@ class BasePage(object):
             message = "Expected text {%s} for {%s} was not visible after %s seconds!" % (text, selector, self.timeout)
             logging.info(page_utils.timeout_exception(ElementNotVisibleException, message))
 
-    def wait_for_text_visible_in_value(self, text, selector, by=By.XPATH):
+    def wait_for_text_visible_in_value(self, text, selector, by=By.CSS_SELECTOR):
         """
         Searches for the specified element by the given selector. Returns the
         element object if the text is present in the element value attribute and visible
@@ -562,7 +562,7 @@ class BasePage(object):
                 text, selector, self.timeout)
             logging.info(page_utils.timeout_exception(ElementNotVisibleException, message))
 
-    def wait_for_attribute(self, selector, attribute, value=None, by=By.XPATH):
+    def wait_for_attribute(self, selector, attribute, value=None, by=By.CSS_SELECTOR):
         """
         Searches for the specified element attribute by the given selector.
         Returns the element object if the expected attribute is present
@@ -619,7 +619,7 @@ class BasePage(object):
                     "(The actual value was {%s})" % (value, attribute, selector, self.timeout, found_value))
             logging.info(page_utils.timeout_exception(NoSuchAttributeException, message))
 
-    def wait_for_element_absent(self, selector, by=By.XPATH):
+    def wait_for_element_absent(self, selector, by=By.CSS_SELECTOR):
         """
         Searches for the specified element by the given selector.
         Raises an exception if the element is still present after the
@@ -634,7 +634,7 @@ class BasePage(object):
             message = "Element {%s} was still present after %s seconds!" % (selector, self.timeout)
             logging.info(page_utils.timeout_exception(Exception, message))
 
-    def wait_for_element_not_visible(self, selector, by=By.XPATH):
+    def wait_for_element_not_visible(self, selector, by=By.CSS_SELECTOR):
         """
         Searches for the specified element by the given selector.
         Raises an exception if the element is still visible after the
@@ -652,7 +652,7 @@ class BasePage(object):
             message = "Element {%s} was still visible after %s seconds!" % (selector, self.timeout)
             logging.info(page_utils.timeout_exception(Exception, message))
 
-    def wait_for_text_not_visible(self, text, selector, by=By.XPATH):
+    def wait_for_text_not_visible(self, text, selector, by=By.CSS_SELECTOR):
         """
         Searches for the text in the element of the given selector on the page.
         Returns True if the text is not visible on the page within the timeout.
@@ -669,7 +669,7 @@ class BasePage(object):
         message = "Text {%s} in {%s} was still visible after %s seconds!" % (text, selector, self.timeout)
         logging.info(page_utils.timeout_exception(Exception, message))
 
-    def wait_for_attribute_not_present(self, selector, attribute, value=None, by=By.XPATH):
+    def wait_for_attribute_not_present(self, selector, attribute, value=None, by=By.CSS_SELECTOR):
         """
         Searches for the specified element attribute by the given selector.
         Returns True if the attribute isn't present on the page within the timeout.
@@ -692,7 +692,7 @@ class BasePage(object):
                 value, attribute, selector, self.timeout))
         logging.info(page_utils.timeout_exception(Exception, message))
 
-    def __scroll_to_element(self, element, selector=None, by=By.XPATH):
+    def __scroll_to_element(self, element, selector=None, by=By.CSS_SELECTOR):
         success = page_utils.scroll_to_element(self.driver, element)
         if not success and selector:
             element = self.wait_for_element_visible(selector, by)
@@ -730,7 +730,7 @@ class BasePage(object):
     def switch_to_newest_window(self):
         self.switch_to_window(len(self.driver.window_handles) - 1)
 
-    def update_text(self, selector, by=By.XPATH, text=None):
+    def update_text(self, selector, by=By.CSS_SELECTOR, text=None):
         """This method updates an element's text field with new text.
         Has multiple parts:
         * Waits for the element to be visible.

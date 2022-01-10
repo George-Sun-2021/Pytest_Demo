@@ -38,7 +38,8 @@ class TestSearch:
 # if __name__ == '__main__':
 #     pytest.main(['TestCase/test_search.py'])
 if __name__ == '__main__':
-# 下面的代码使用pycharm运行可能会没有生成报告，建议使用vscode执行
+    # 下面的代码使用pycharm运行可能会没有生成报告，建议使用vscode执行
     import os
+
     pytest.main(['test_case/test_search.py', '--alluredir', './allure'])
     os.system('allure serve allure')

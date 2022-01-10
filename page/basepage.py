@@ -67,7 +67,7 @@ class BasePage(object):
         click the button/link
         @Params
         selector - the selector of the text field
-        by - the type of selector to search by (Default: XPATH)
+        by - the type of selector to search by (Default: CSS_SELECTOR)
         delay - delay some time before perform the click (Default: 0)
         scroll - scroll to the element after click (Default: true)
         """
@@ -133,7 +133,7 @@ class BasePage(object):
         @Params
         selector - the selector of the text field
         text - the new text to type into the text field
-        by - the type of selector to search by (Default: XPATH)
+        by - the type of selector to search by (Default: CSS_SELECTOR)
         """
         selector, by = self.__recalculate_selector(selector, by)
         self.update_text(selector, by=by, text=text)
@@ -149,7 +149,7 @@ class BasePage(object):
         add backspaces to make sure autofill doesn't undo the clear.
         @Params
         selector - the selector of the text field
-        by - the type of selector to search by (Default: XPATH)
+        by - the type of selector to search by (Default: CSS_SELECTOR)
         """
         selector, by = self.__recalculate_selector(selector, by)
         element = self.wait_for_element_visible(selector, by=by)
@@ -290,7 +290,7 @@ class BasePage(object):
                     by = By.XPATH
                 else:
                     by = By.CSS_SELECTOR
-                if page_utils.is_element_visible(frame, by=by):
+                if page_utils.is_element_visible(self.driver, frame, by=by):
                     try:
                         element = self.driver.find_element(by=by, value=frame)
                         self.driver.switch_to.frame(element)
@@ -300,6 +300,338 @@ class BasePage(object):
             time.sleep(0.1)
         message = "Frame {%s} was not visible after %s seconds!" % (frame, self.timeout)
         page_utils.timeout_exception(Exception, message)
+
+    def switch_to_window(self, window):
+        """ Switches control of the browser to the specified window.
+            The window can be an integer: 0 -> 1st tab, 1 -> 2nd tab, etc...
+                Or it can be a list item from self.driver.window_handles """
+        if isinstance(window, int):
+            try:
+                window_handle = self.wait.until(self.driver.window_handles[window])
+                self.driver.switch_to.window(window_handle)
+                return True
+            except Exception:
+                message = "Window {%s} was not present after %s seconds!" % (window, self.timeout)
+                page_utils.timeout_exception(Exception, message)
+        else:
+            window_handle = window
+            try:
+                self.wait.until(self.driver.switch_to.window(window_handle))
+                return True
+            except Exception:
+                message = "Window {%s} was not present after %s seconds!" % (window, self.timeout)
+                page_utils.timeout_exception(Exception, message)
+
+    def hover_on_element(self, selector, by=By.CSS_SELECTOR):
+        selector, by = self.__recalculate_selector(selector, by)
+        if page_utils.is_xpath_selector(selector):
+            selector = self.convert_to_css_selector(selector, By.XPATH)
+            by = By.CSS_SELECTOR
+        self.wait_for_element_visible(selector, by=by)
+        self.scroll_to(selector, by=by)
+        time.sleep(0.05)  # Settle down from scrolling before hovering
+        try:
+            return page_utils.hover_on_element(self.driver, selector)
+        except WebDriverException as e:
+            driver_capabilities = self.driver.__dict__["capabilities"]
+            if "version" in driver_capabilities:
+                chrome_version = driver_capabilities["version"]
+            else:
+                chrome_version = driver_capabilities["browserVersion"]
+            major_chrome_version = chrome_version.split(".")[0]
+            chrome_dict = self.driver.__dict__["capabilities"]["chrome"]
+            chromedriver_version = chrome_dict["chromedriverVersion"]
+            chromedriver_version = chromedriver_version.split(" ")[0]
+            major_chromedriver_version = chromedriver_version.split(".")[0]
+            if major_chromedriver_version < major_chrome_version:
+                # Upgrading the driver is required for performing hover actions
+                message = (
+                        "\n"
+                        "You need a newer chromedriver to perform hover actions!\n"
+                        "Your version of chromedriver is: %s\n"
+                        "And your version of Chrome is: %s\n"
+                        "You can fix this issue by install the right version of chrome driver\n"
+                        % (chromedriver_version, chrome_version)
+                )
+                raise Exception(message)
+            else:
+                raise Exception(e)
+
+    def hover_and_click(
+            self,
+            hover_selector,
+            click_selector,
+            hover_by=By.CSS_SELECTOR,
+            click_by=By.CSS_SELECTOR,
+            timeout=None,
+    ):
+        """When you want to hover over an element or dropdown menu,
+        and then click an element that appears after that."""
+        if not timeout:
+            timeout = settings.SMALL_TIMEOUT
+        if self.timeout_multiplier and timeout == settings.SMALL_TIMEOUT:
+            timeout = self.__get_new_timeout(timeout)
+        original_selector = hover_selector
+        original_by = hover_by
+        hover_selector, hover_by = self.__recalculate_selector(
+            hover_selector, hover_by
+        )
+        hover_selector = self.convert_to_css_selector(hover_selector, hover_by)
+        hover_by = By.CSS_SELECTOR
+        click_selector, click_by = self.__recalculate_selector(
+            click_selector, click_by
+        )
+        dropdown_element = self.wait_for_element_visible(
+            hover_selector, by=hover_by, timeout=timeout
+        )
+        self.__demo_mode_highlight_if_active(original_selector, original_by)
+        self.scroll_to(hover_selector, by=hover_by)
+        pre_action_url = self.driver.current_url
+        pre_window_count = len(self.driver.window_handles)
+        if self.recorder_mode:
+            url = self.get_current_url()
+            if url and len(url) > 0:
+                if ("http:") in url or ("https:") in url or ("file:") in url:
+                    if self.get_session_storage_item("pause_recorder") == "no":
+                        time_stamp = self.execute_script("return Date.now();")
+                        origin = self.get_origin()
+                        the_selectors = [hover_selector, click_selector]
+                        action = ["ho_cl", the_selectors, origin, time_stamp]
+                        self.__extra_actions.append(action)
+        outdated_driver = False
+        element = None
+        try:
+            if self.mobile_emulator:
+                # On mobile, click to hover the element
+                dropdown_element.click()
+            elif self.browser == "safari":
+                # Use the workaround for hover-clicking on Safari
+                raise Exception("This Exception will be caught.")
+            else:
+                page_actions.hover_element(self.driver, dropdown_element)
+        except Exception:
+            outdated_driver = True
+            element = self.wait_for_element_present(
+                click_selector, click_by, timeout
+            )
+            if click_by == By.LINK_TEXT:
+                self.open(self.__get_href_from_link_text(click_selector))
+            elif click_by == By.PARTIAL_LINK_TEXT:
+                self.open(
+                    self.__get_href_from_partial_link_text(click_selector)
+                )
+            else:
+                self.__dont_record_js_click = True
+                self.js_click(click_selector, by=click_by)
+                self.__dont_record_js_click = False
+        if outdated_driver:
+            pass  # Already did the click workaround
+        elif self.mobile_emulator:
+            self.click(click_selector, by=click_by)
+        elif not outdated_driver:
+            element = page_actions.hover_and_click(
+                self.driver,
+                hover_selector,
+                click_selector,
+                hover_by,
+                click_by,
+                timeout,
+            )
+        latest_window_count = len(self.driver.window_handles)
+        if (
+                latest_window_count > pre_window_count
+                and (
+                self.recorder_mode
+                or (
+                        settings.SWITCH_TO_NEW_TABS_ON_CLICK
+                        and self.driver.current_url == pre_action_url
+                )
+        )
+        ):
+            self.__switch_to_newest_window_if_not_blank()
+        if self.demo_mode:
+            if self.driver.current_url != pre_action_url:
+                self.__demo_mode_pause_if_active()
+            else:
+                self.__demo_mode_pause_if_active(tiny=True)
+        elif self.slow_mode:
+            self.__slow_mode_pause_if_active()
+        return element
+
+    def hover_and_double_click(
+            self,
+            hover_selector,
+            click_selector,
+            hover_by=By.CSS_SELECTOR,
+            click_by=By.CSS_SELECTOR,
+            timeout=None,
+    ):
+        """When you want to hover over an element or dropdown menu,
+        and then double-click an element that appears after that."""
+        self.__check_scope()
+        if not timeout:
+            timeout = settings.SMALL_TIMEOUT
+        if self.timeout_multiplier and timeout == settings.SMALL_TIMEOUT:
+            timeout = self.__get_new_timeout(timeout)
+        original_selector = hover_selector
+        original_by = hover_by
+        hover_selector, hover_by = self.__recalculate_selector(
+            hover_selector, hover_by
+        )
+        hover_selector = self.convert_to_css_selector(hover_selector, hover_by)
+        hover_by = By.CSS_SELECTOR
+        click_selector, click_by = self.__recalculate_selector(
+            click_selector, click_by
+        )
+        dropdown_element = self.wait_for_element_visible(
+            hover_selector, by=hover_by, timeout=timeout
+        )
+        self.__demo_mode_highlight_if_active(original_selector, original_by)
+        self.scroll_to(hover_selector, by=hover_by)
+        pre_action_url = self.driver.current_url
+        pre_window_count = len(self.driver.window_handles)
+        outdated_driver = False
+        element = None
+        try:
+            page_actions.hover_element(self.driver, dropdown_element)
+        except Exception:
+            outdated_driver = True
+            element = self.wait_for_element_present(
+                click_selector, click_by, timeout
+            )
+            if click_by == By.LINK_TEXT:
+                self.open(self.__get_href_from_link_text(click_selector))
+            elif click_by == By.PARTIAL_LINK_TEXT:
+                self.open(
+                    self.__get_href_from_partial_link_text(click_selector)
+                )
+            else:
+                self.__dont_record_js_click = True
+                self.js_click(click_selector, click_by)
+                self.__dont_record_js_click = False
+        if not outdated_driver:
+            element = page_actions.hover_element_and_double_click(
+                self.driver,
+                dropdown_element,
+                click_selector,
+                click_by=By.CSS_SELECTOR,
+                timeout=timeout,
+            )
+        latest_window_count = len(self.driver.window_handles)
+        if (
+                latest_window_count > pre_window_count
+                and (
+                self.recorder_mode
+                or (
+                        settings.SWITCH_TO_NEW_TABS_ON_CLICK
+                        and self.driver.current_url == pre_action_url
+                )
+        )
+        ):
+            self.__switch_to_newest_window_if_not_blank()
+        if self.demo_mode:
+            if self.driver.current_url != pre_action_url:
+                self.__demo_mode_pause_if_active()
+            else:
+                self.__demo_mode_pause_if_active(tiny=True)
+        elif self.slow_mode:
+            self.__slow_mode_pause_if_active()
+        return element
+
+    def drag_and_drop(
+            self,
+            drag_selector,
+            drop_selector,
+            drag_by=By.CSS_SELECTOR,
+            drop_by=By.CSS_SELECTOR,
+            timeout=None,
+    ):
+        """ Drag and drop an element from one selector to another. """
+        self.__check_scope()
+        if not timeout:
+            timeout = settings.SMALL_TIMEOUT
+        if self.timeout_multiplier and timeout == settings.SMALL_TIMEOUT:
+            timeout = self.__get_new_timeout(timeout)
+        drag_selector, drag_by = self.__recalculate_selector(
+            drag_selector, drag_by
+        )
+        drop_selector, drop_by = self.__recalculate_selector(
+            drop_selector, drop_by
+        )
+        drag_element = self.wait_for_element_visible(
+            drag_selector, by=drag_by, timeout=timeout
+        )
+        self.__demo_mode_highlight_if_active(drag_selector, drag_by)
+        self.wait_for_element_visible(
+            drop_selector, by=drop_by, timeout=timeout
+        )
+        self.__demo_mode_highlight_if_active(drop_selector, drop_by)
+        self.scroll_to(drag_selector, by=drag_by)
+        drag_selector = self.convert_to_css_selector(drag_selector, drag_by)
+        drop_selector = self.convert_to_css_selector(drop_selector, drop_by)
+        drag_and_drop_script = js_utils.get_drag_and_drop_script()
+        self.safe_execute_script(
+            drag_and_drop_script
+            + (
+                    "$('%s').simulateDragDrop("
+                    "{dropTarget: "
+                    "'%s'});" % (drag_selector, drop_selector)
+            )
+        )
+        if self.demo_mode:
+            self.__demo_mode_pause_if_active()
+        elif self.slow_mode:
+            self.__slow_mode_pause_if_active()
+        return drag_element
+
+    def drag_and_drop_with_offset(
+            self, selector, x, y, by=By.CSS_SELECTOR, timeout=None
+    ):
+        """ Drag and drop an element to an {X,Y}-offset location. """
+        self.__check_scope()
+        if not timeout:
+            timeout = settings.SMALL_TIMEOUT
+        if self.timeout_multiplier and timeout == settings.SMALL_TIMEOUT:
+            timeout = self.__get_new_timeout(timeout)
+        selector, by = self.__recalculate_selector(selector, by)
+        css_selector = self.convert_to_css_selector(selector, by=by)
+        element = self.wait_for_element_visible(css_selector, timeout=timeout)
+        self.__demo_mode_highlight_if_active(css_selector, By.CSS_SELECTOR)
+        css_selector = re.escape(css_selector)  # Add "\\" to special chars
+        css_selector = self.__escape_quotes_if_needed(css_selector)
+        script = js_utils.get_drag_and_drop_with_offset_script(
+            css_selector, x, y
+        )
+        self.safe_execute_script(script)
+        if self.demo_mode:
+            self.__demo_mode_pause_if_active()
+        elif self.slow_mode:
+            self.__slow_mode_pause_if_active()
+        return element
+
+    def select_option_by_text(self, dropdown_selector, option, dropdown_by=By.CSS_SELECTOR):
+        """Selects an HTML <select> option by option text.
+        @Params
+        dropdown_selector - the <select> selector.
+        option - the text of the option.
+        """
+        self.__select_option(dropdown_selector, option, dropdown_by=dropdown_by, option_by="text")
+
+    def select_option_by_index(self, dropdown_selector, option, dropdown_by=By.CSS_SELECTOR):
+        """Selects an HTML <select> option by option index.
+        @Params
+        dropdown_selector - the <select> selector.
+        option - the index number of the option.
+        """
+        self.__select_option(dropdown_selector, option, dropdown_by=dropdown_by, option_by="index")
+
+    def select_option_by_value(self, dropdown_selector, option, dropdown_by=By.CSS_SELECTOR):
+        """Selects an HTML <select> option by option value.
+        @Params
+        dropdown_selector - the <select> selector.
+        option - the value property of the option.
+        """
+        self.__select_option(dropdown_selector, option, dropdown_by=dropdown_by, option_by="value")
 
     ############
 
@@ -360,10 +692,6 @@ class BasePage(object):
 
     # Bases (Basic page actions)
 
-    @staticmethod
-    def convert_css_to_xpath(css):
-        return css_to_xpath.convert_css_to_xpath(css)
-
     def __recalculate_selector(self, selector, by, xp_ok=True):
         """Use auto-detection to return the correct selector with "by" updated.
         If "xp_ok" is False, don't call convert_css_to_xpath(), which is
@@ -398,6 +726,37 @@ class BasePage(object):
                 selector = self.convert_css_to_xpath(selector)
                 by = By.XPATH
         return selector, by
+
+    @staticmethod
+    def convert_css_to_xpath(css):
+        return css_to_xpath.convert_css_to_xpath(css)
+
+    def convert_to_css_selector(self, selector, by):
+        """This method converts a selector to a CSS_SELECTOR.
+        jQuery commands require a CSS_SELECTOR for finding elements.
+        This method should only be used for jQuery/JavaScript actions.
+        Pure JavaScript doesn't support using a:contains("LINK_TEXT")."""
+        if by == By.CSS_SELECTOR:
+            return selector
+        elif by == By.ID:
+            return "#%s" % selector
+        elif by == By.CLASS_NAME:
+            return ".%s" % selector
+        elif by == By.NAME:
+            return '[name="%s"]' % selector
+        elif by == By.TAG_NAME:
+            return selector
+        elif by == By.XPATH:
+            return self.convert_xpath_to_css(selector)
+        elif by == By.LINK_TEXT:
+            return 'a:contains("%s")' % selector
+        elif by == By.PARTIAL_LINK_TEXT:
+            return 'a:contains("%s")' % selector
+        else:
+            raise Exception(
+                "Exception: Could not convert {%s}(by=%s) to CSS_SELECTOR!"
+                % (selector, by)
+            )
 
     @staticmethod
     def __looks_like_a_page_url(url):
@@ -706,27 +1065,6 @@ class BasePage(object):
             self.switch_to_newest_window()
             time.sleep(0.01)
 
-    def switch_to_window(self, window):
-        """ Switches control of the browser to the specified window.
-            The window can be an integer: 0 -> 1st tab, 1 -> 2nd tab, etc...
-                Or it can be a list item from self.driver.window_handles """
-        if isinstance(window, int):
-            try:
-                window_handle = self.wait.until(self.driver.window_handles[window])
-                self.driver.switch_to.window(window_handle)
-                return True
-            except Exception:
-                message = "Window {%s} was not present after %s seconds!" % (window, self.timeout)
-                page_utils.timeout_exception(Exception, message)
-        else:
-            window_handle = window
-            try:
-                self.wait.until(self.driver.switch_to.window(window_handle))
-                return True
-            except Exception:
-                message = "Window {%s} was not present after %s seconds!" % (window, self.timeout)
-                page_utils.timeout_exception(Exception, message)
-
     def switch_to_newest_window(self):
         self.switch_to_window(len(self.driver.window_handles) - 1)
 
@@ -787,6 +1125,30 @@ class BasePage(object):
         self.wait_for_element_present("title")
         time.sleep(0.03)
         return self.driver.title
+
+    def __select_option(self, dropdown_selector, option, dropdown_by=By.CSS_SELECTOR, option_by="text"):
+        """Selects an HTML <select> option by specification.
+        Option specifications are by "text", "index", or "value".
+        Defaults to "text" if option_by is unspecified or unknown."""
+        from selenium.webdriver.support.ui import Select
+        dropdown_selector, dropdown_by = self.__recalculate_selector(dropdown_selector, dropdown_by)
+        element = self.wait_for_element_present(dropdown_selector, by=dropdown_by)
+        try:
+            if option_by == "index":
+                Select(element).select_by_index(option)
+            elif option_by == "value":
+                Select(element).select_by_value(option)
+            else:
+                Select(element).select_by_visible_text(option)
+        except (StaleElementReferenceException, ENI_Exception):
+            time.sleep(0.14)
+            element = self.wait_for_element_present(dropdown_selector, by=dropdown_by)
+            if option_by == "index":
+                Select(element).select_by_index(option)
+            elif option_by == "value":
+                Select(element).select_by_value(option)
+            else:
+                Select(element).select_by_visible_text(option)
 
     ############
 

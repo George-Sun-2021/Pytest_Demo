@@ -183,7 +183,7 @@ def timeout_exception(exception, message):
 
 
 # if conditions for elements
-def is_element_present(driver, selector, by=By.XPATH):
+def is_element_present(driver, selector, by=By.CSS_SELECTOR):
     """
     Returns whether the specified element selector is present on the page.
     @Params
@@ -200,7 +200,7 @@ def is_element_present(driver, selector, by=By.XPATH):
         return False
 
 
-def is_element_visible(driver, selector, by=By.XPATH):
+def is_element_visible(driver, selector, by=By.CSS_SELECTOR):
     """
     Returns whether the specified element selector is visible on the page.
     @Params
@@ -217,7 +217,7 @@ def is_element_visible(driver, selector, by=By.XPATH):
         return False
 
 
-def is_element_enabled(driver, selector, by=By.XPATH):
+def is_element_enabled(driver, selector, by=By.CSS_SELECTOR):
     """
     Returns whether the specified element selector is enabled on the page.
     @Params
@@ -234,7 +234,7 @@ def is_element_enabled(driver, selector, by=By.XPATH):
         return False
 
 
-def is_text_visible(driver, text, selector, by=By.XPATH):
+def is_text_visible(driver, text, selector, by=By.CSS_SELECTOR):
     """
     Returns whether the specified text is visible in the specified selector.
     @Params
@@ -253,7 +253,7 @@ def is_text_visible(driver, text, selector, by=By.XPATH):
 
 
 def is_attribute_present(
-        driver, selector, attribute, value=None, by=By.XPATH
+        driver, selector, attribute, value=None, by=By.CSS_SELECTOR
 ):
     """
     Returns whether the specified attribute is present in the given selector.
@@ -456,7 +456,7 @@ def switch_to_frame(driver, frame):
 #######################################
 
 
-def hover_on_element(driver, selector, by=By.XPATH):
+def hover_on_element(driver, selector, by=By.CSS_SELECTOR):
     """
     Fires the hover event for the specified element by the given selector.
     @Params

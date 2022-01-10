@@ -28,11 +28,14 @@ HEADLESS_START_HEIGHT = 1880
 
 # basic type of the element locator
 LOCATE_MODE = {
-    'css': 'By.CSS_SELECTOR',
-    'xpath': 'By.XPATH',
-    'name': 'By.NAME',
-    'id': 'By.ID',
-    'class': 'By.CLASS_NAME',
+    'id': 'id',
+    'xpath': 'xpath',
+    'link': 'link text',
+    'partial_link': 'partial link text',
+    'name': 'name',
+    'tag': 'tag name',
+    'class': 'class name',
+    'css': 'css selector',
 }
 
 # information for email

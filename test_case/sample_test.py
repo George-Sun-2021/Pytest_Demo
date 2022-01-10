@@ -2,13 +2,15 @@
 # -*- coding:utf-8 -*-
 
 from selenium import webdriver
+from selenium.webdriver.common.by import By
 
 
 def login():
-    driver = webdriver.Chrome(executable_path=r"/usr/local/bin/chromedriver")
+    driver = webdriver.Chrome()
 
     driver.delete_all_cookies()
     driver.get('https://www.baidu.com/')
+    driver.find_element(By.ID, 'kw')
 
 
 if __name__ == '__main__':

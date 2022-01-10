@@ -14,6 +14,7 @@ from selenium.common.exceptions import (
     NoSuchElementException,
     ElementNotVisibleException,
     NoSuchAttributeException,
+    NoSuchFrameException,
     ElementClickInterceptedException as ECI_Exception,
     ElementNotInteractableException as ENI_Exception,
     MoveTargetOutOfBoundsException,
@@ -62,6 +63,14 @@ class BasePage(object):
             raise TimeoutException("open'%s' timeout, please check the network or web server correct or not" % url)
 
     def click(self, selector, by=By.XPATH, delay=0, scroll=True):
+        """
+        click the button/link
+        @Params
+        selector - the selector of the text field
+        by - the type of selector to search by (Default: XPATH)
+        delay - delay some time before perform the click (Default: 0)
+        scroll - scroll to the element after click (Default: true)
+        """
         selector, by = self.__recalculate_selector(selector, by)
         if delay and (type(delay) in [int, float]) and delay > 0:
             time.sleep(delay)
@@ -69,8 +78,7 @@ class BasePage(object):
         if scroll:
             self.__scroll_to_element(element, selector, by)
         try:
-            # Normal click
-            element.click()
+            element.click()  # Normal click
         except StaleElementReferenceException:
             time.sleep(0.16)
             element = self.wait_for_element_visible(selector, by)
@@ -113,7 +121,7 @@ class BasePage(object):
             self.__scroll_to_element(element, selector, by)
             element.click()
 
-    def type(self, selector, text, by=By.XPATH):
+    def type(self, selector, by=By.XPATH, text=None):
         """Same as self.update_text()
         This method updates an element's text field with new text.
         Has multiple parts:
@@ -125,13 +133,10 @@ class BasePage(object):
         @Params
         selector - the selector of the text field
         text - the new text to type into the text field
-        by - the type of selector to search by (Default: CSS Selector)
-        timeout - how long to wait for the selector to be visible
-        retry - if True, use JS if the Selenium text update fails
-        DO NOT confuse self.type() with Python type()! They are different!
+        by - the type of selector to search by (Default: XPATH)
         """
         selector, by = self.__recalculate_selector(selector, by)
-        self.update_text(selector, text, by=by)
+        self.update_text(selector, by=by, text=text)
 
     def clear(self, selector, by=By.XPATH):
         """This method clears an element's text field.
@@ -144,8 +149,7 @@ class BasePage(object):
         add backspaces to make sure autofill doesn't undo the clear.
         @Params
         selector - the selector of the text field
-        by - the type of selector to search by (Default: CSS Selector)
-        timeout - how long to wait for the selector to be visible
+        by - the type of selector to search by (Default: XPATH)
         """
         selector, by = self.__recalculate_selector(selector, by)
         element = self.wait_for_element_visible(selector, by=by)
@@ -172,17 +176,9 @@ class BasePage(object):
         element = self.wait_for_element_visible(selector, by=by)
         element.submit()
 
-    def refresh(self):
-        """ The shorter version of self.refresh_page() """
-        self.refresh_page()
-
     def get_title(self):
         """ The shorter version of self.get_page_title() """
         return self.get_page_title()
-
-
-
-
 
     def scroll_to(self, selector, by=By.XPATH):
         """ Fast scroll to destination """
@@ -194,7 +190,28 @@ class BasePage(object):
             element = self.wait_for_element_visible(selector, by=by)
             self.__scroll_to_element(element, selector, by)
 
-    def add_text(self, selector, text, by=By.XPATH):
+    def go_back(self):
+        self.driver.back()
+
+    def go_forward(self):
+        self.driver.forward()
+
+    def refresh(self):
+        """ The shorter version of self.refresh_page() """
+        self.refresh_page()
+
+    def get_text(self, selector, by=By.XPATH):
+        selector, by = self.__recalculate_selector(selector, by)
+        element = self.wait_for_element_visible(selector, by)
+        try:
+            element_text = element.text
+        except (StaleElementReferenceException, ENI_Exception):
+            time.sleep(0.14)
+            element = self.wait_for_element_visible(selector, by)
+            element_text = element.text
+        return element_text
+
+    def add_text(self, selector, by=By.XPATH, text=None):
         """The more-reliable version of driver.send_keys()
         Similar to update_text(), but won't clear the text field first."""
         selector, by = self.__recalculate_selector(selector, by)
@@ -217,29 +234,38 @@ class BasePage(object):
                 element.send_keys(text[:-1])
                 element.send_keys(Keys.RETURN)
 
-
-    def element_text(self, locator):
-        """获取当前的text"""
-        _text = self.find_element(locator).text
-        log.info("获取文本：{}".format(_text))
-        return _text
+    def find_visible_elements(self, selector, by=By.XPATH):
+        """
+        Finds all WebElements that match a selector and are visible.
+        Similar to webdriver.find_elements.
+        @Params
+        driver - the webdriver object (required)
+        selector - the locator for identifying the page element (required)
+        by - the type of selector being used (Default: By.CSS_SELECTOR)
+        """
+        selector, by = self.__recalculate_selector(selector, by)
+        locator = (by, selector)
+        try:
+            # return self.wait.until(self.driver.find_element(*locator))
+            return self.wait.until(EC.presence_of_all_elements_located(locator))
+        except Exception:
+            message = "Elements {%s} were not visible after %s seconds!" % (selector, self.timeout)
+            logging.info(page_utils.timeout_exception(ElementNotVisibleException, message))
 
     @property
-    def get_source(self):
-        """获取页面源代码"""
+    def get_page_source(self):
+        """
+        get page resource
+        """
         return self.driver.page_source
 
     def set_window_size(self, width, height):
-        self.__check_scope()
         self.driver.set_window_size(width, height)
-        self.__demo_mode_pause_if_active()
 
     def maximize_window(self):
-        self.__check_scope()
         self.driver.maximize_window()
-        self.__demo_mode_pause_if_active()
 
-    def switch_to_frame(self, frame, timeout=None):
+    def switch_to_frame(self, frame):
         """Wait for an iframe to appear, and switch to it. This should be
         usable as a drop-in replacement for driver.switch_to.frame().
         The iframe identifier can be a selector, an index, an id, a name,
@@ -249,14 +275,31 @@ class BasePage(object):
         frame - the frame element, name, id, index, or selector
         timeout - the time to wait for the alert in seconds
         """
-        if not timeout:
-            timeout = configs.SMALL_TIMEOUT
         if type(frame) is str and self.is_element_visible(frame):
             try:
-                self.scroll_to(frame, timeout=1)
+                self.scroll_to(frame)
             except Exception:
                 pass
-        page_utils.switch_to_frame(self.driver, frame, timeout)
+        try:
+            self.wait.until(EC.frame_to_be_available_and_switch_to_it(self.driver.switch_to.frame(frame)))
+            return True
+        except NoSuchFrameException:
+            if type(frame) is str:
+                by = None
+                if page_utils.is_xpath_selector(frame):
+                    by = By.XPATH
+                else:
+                    by = By.CSS_SELECTOR
+                if page_utils.is_element_visible(frame, by=by):
+                    try:
+                        element = self.driver.find_element(by=by, value=frame)
+                        self.driver.switch_to.frame(element)
+                        return True
+                    except Exception:
+                        pass
+            time.sleep(0.1)
+        message = "Frame {%s} was not visible after %s seconds!" % (frame, self.timeout)
+        page_utils.timeout_exception(Exception, message)
 
     ############
 
@@ -327,6 +370,12 @@ class BasePage(object):
         used to make the ":contains()" selector valid outside JS calls."""
         _type = type(selector)  # First make sure the selector is a string
         not_string = False
+        if _type is tuple:
+            if len(selector) is not 2:
+                msg = "Expecting a selector with length of 2!"
+                raise Exception('Invalid selector type: "%s"\n%s' % (_type, msg))
+            selector, by = selector[0], selector[1]
+            return selector, by
         if _type is not str:
             not_string = True
         if not_string:
@@ -348,7 +397,7 @@ class BasePage(object):
             if ":contains(" in selector and by == By.CSS_SELECTOR:
                 selector = self.convert_css_to_xpath(selector)
                 by = By.XPATH
-        return (selector, by)
+        return selector, by
 
     @staticmethod
     def __looks_like_a_page_url(url):
@@ -372,9 +421,6 @@ class BasePage(object):
             return True
         else:
             return False
-
-    def get_page_source(self):
-        return self.driver.page_source
 
     def get_beautiful_soup(self, source=None):
         """BeautifulSoup is a toolkit for dissecting an HTML document
@@ -424,7 +470,7 @@ class BasePage(object):
         locator = (by, selector)
         try:
             # return self.wait.until(self.driver.find_element(*locator))
-            return self.wait.until(EC.presence_of_element_located(*locator))
+            return self.wait.until(EC.presence_of_element_located(locator))
         except Exception:
             message = "Element {%s} was not present after %s seconds!" % (selector, self.timeout)
         logging.info(page_utils.timeout_exception(NoSuchElementException, message))
@@ -446,7 +492,7 @@ class BasePage(object):
         locator = (by, selector)
         try:
             # return self.wait.until(lambda x: x.find_element(*locator))
-            return self.wait.until(EC.visibility_of_element_located(*locator))
+            return self.wait.until(EC.visibility_of_element_located(locator))
         except Exception:
             message = "Element {%s} was not visible after %s seconds!" % (selector, self.timeout)
             logging.info(page_utils.timeout_exception(ElementNotVisibleException, message))
@@ -468,7 +514,7 @@ class BasePage(object):
         locator = (by, selector)
         try:
             # return self.wait.until(lambda x: x.find_element(*locator))
-            return self.wait.until(EC.element_to_be_clickable(*locator))
+            return self.wait.until(EC.element_to_be_clickable(locator))
         except Exception:
             message = "Element {%s} was not clickable after %s seconds!" % (selector, self.timeout)
             logging.info(page_utils.timeout_exception(ElementNotVisibleException, message))
@@ -489,7 +535,7 @@ class BasePage(object):
         """
         locator = (by, selector)
         try:
-            return self.wait.until(EC.text_to_be_present_in_element(*locator, text))
+            return self.wait.until(EC.text_to_be_present_in_element(locator, text))
         except ElementNotVisibleException:
             message = "Expected text {%s} for {%s} was not visible after %s seconds!" % (text, selector, self.timeout)
             logging.info(page_utils.timeout_exception(ElementNotVisibleException, message))
@@ -510,7 +556,7 @@ class BasePage(object):
         """
         locator = (by, selector)
         try:
-            return self.wait.until(EC.text_to_be_present_in_element_value(*locator, text))
+            return self.wait.until(EC.text_to_be_present_in_element_value(locator, text))
         except ElementNotVisibleException:
             message = "Expected text {%s} in {%s} value was not visible after %s seconds!" % (
                 text, selector, self.timeout)
@@ -601,7 +647,7 @@ class BasePage(object):
         """
         locator = (by, selector)
         try:
-            return self.wait.until(EC.invisibility_of_element_located(*locator))
+            return self.wait.until(EC.invisibility_of_element_located(locator))
         except Exception:
             message = "Element {%s} was still visible after %s seconds!" % (selector, self.timeout)
             logging.info(page_utils.timeout_exception(Exception, message))
@@ -646,23 +692,6 @@ class BasePage(object):
                 value, attribute, selector, self.timeout))
         logging.info(page_utils.timeout_exception(Exception, message))
 
-    def find_visible_elements(self, selector, by=By.XPATH):
-        """
-        Finds all WebElements that match a selector and are visible.
-        Similar to webdriver.find_elements.
-        @Params
-        driver - the webdriver object (required)
-        selector - the locator for identifying the page element (required)
-        by - the type of selector being used (Default: By.CSS_SELECTOR)
-        """
-        locator = (by, selector)
-        try:
-            # return self.wait.until(self.driver.find_element(*locator))
-            return self.wait.until(EC.presence_of_all_elements_located(*locator))
-        except Exception:
-            message = "Elements {%s} were not visible after %s seconds!" % (selector, self.timeout)
-            logging.info(page_utils.timeout_exception(ElementNotVisibleException, message))
-
     def __scroll_to_element(self, element, selector=None, by=By.XPATH):
         success = page_utils.scroll_to_element(self.driver, element)
         if not success and selector:
@@ -701,7 +730,7 @@ class BasePage(object):
     def switch_to_newest_window(self):
         self.switch_to_window(len(self.driver.window_handles) - 1)
 
-    def update_text(self, selector, text, by=By.XPATH):
+    def update_text(self, selector, by=By.XPATH, text=None):
         """This method updates an element's text field with new text.
         Has multiple parts:
         * Waits for the element to be visible.

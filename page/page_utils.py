@@ -387,70 +387,105 @@ def scroll_to_element(driver, element):
         return False
 
 
-def switch_to_frame(driver, frame):
-    """
-    Wait for an iframe to appear, and switch to it. This should be
-    usable as a drop-in replacement for driver.switch_to.frame().
-    @Params
-    driver - the webdriver object (required)
-    frame - the frame element, name, id, index, or selector
-    timeout - the time to wait for the alert in seconds
-    """
-    try:
-        driver.switch_to.frame(frame)
+def are_quotes_escaped(string):
+    if string.count("\\'") != string.count("'") or (
+            string.count('\\"') != string.count('"')
+    ):
         return True
-    except NoSuchFrameException:
-        if type(frame) is str:
-            by = None
-            if is_xpath_selector(frame):
-                by = By.XPATH
-            else:
-                by = By.CSS_SELECTOR
-            if is_element_visible(driver, frame, by=by):
-                try:
-                    element = driver.find_element(by=by, value=frame)
-                    driver.switch_to.frame(element)
-                    return True
-                except Exception:
-                    pass
-        time.sleep(0.1)
-    message = "Frame {%s} was not visible after %s seconds!" % (frame, self.timeout)
-    timeout_exception(Exception, message)
+    return False
 
-    start_ms = time.time() * 1000.0
-    stop_ms = start_ms + (timeout * 1000.0)
-    for x in range(int(timeout * 10)):
-        em_utils.check_if_time_limit_exceeded()
+
+def escape_quotes_if_needed(string):
+    """
+    re.escape() works differently in Python 3.7.0 than earlier versions:
+
+    Python 3.6.5:
+    >>> import re
+    >>> re.escape('"')
+    '\\"'
+
+    Python 3.7.0:
+    >>> import re
+    >>> re.escape('"')
+    '"'
+
+    SeleniumBase needs quotes to be properly escaped for Javascript calls.
+    """
+    if are_quotes_escaped(string):
+        if string.count("'") != string.count("\\'"):
+            string = string.replace("'", "\\'")
+        if string.count('"') != string.count('\\"'):
+            string = string.replace('"', '\\"')
+    return string
+
+
+def is_jquery_activated(driver):
+    try:
+        driver.execute_script("jQuery('html')")  # Fails if jq is not defined
+        return True
+    except Exception:
+        return False
+
+
+def activate_jquery(driver):
+    """If "jQuery is not defined", use this method to activate it for use.
+    This happens because jQuery is not always defined on web sites."""
+    try:
+        # Let's first find out if jQuery is already defined.
+        driver.execute_script("jQuery('html');")
+        # Since that command worked, jQuery is defined. Let's return.
+        return
+    except Exception:
+        # jQuery is not currently defined. Let's proceed by defining it.
+        pass
+    jquery_js = constants.JQuery.MIN_JS
+    add_js_link(driver, jquery_js)
+    for x in range(int(settings.MINI_TIMEOUT * 10.0)):
+        # jQuery needs a small amount of time to activate.
         try:
-            driver.switch_to.frame(frame)
-            return True
-        except NoSuchFrameException:
-            if type(frame) is str:
-                by = None
-                if page_utils.is_xpath_selector(frame):
-                    by = By.XPATH
-                else:
-                    by = By.CSS_SELECTOR
-                if is_element_visible(driver, frame, by=by):
-                    try:
-                        element = driver.find_element(by=by, value=frame)
-                        driver.switch_to.frame(element)
-                        return True
-                    except Exception:
-                        pass
-            now_ms = time.time() * 1000.0
-            if now_ms >= stop_ms:
-                break
+            driver.execute_script("jQuery('html');")
+            return
+        except Exception:
             time.sleep(0.1)
-    plural = "s"
-    if timeout == 1:
-        plural = ""
-    message = "Frame {%s} was not visible after %s second%s!" % (
-        frame,
-        timeout,
-        plural,
-    )
-    timeout_exception(Exception, message)
+    try:
+        add_js_link(driver, jquery_js)
+        time.sleep(0.1)
+        driver.execute_script("jQuery('head');")
+    except Exception:
+        pass
+    # Since jQuery still isn't activating, give up and raise an exception
+    raise_unable_to_load_jquery_exception(driver)
+
+
+def add_css_link(driver, css_link):
+    script_to_add_css = """function injectCSS(css) {
+          var head_tag=document.getElementsByTagName("head")[0];
+          var link_tag=document.createElement("link");
+          link_tag.rel="stylesheet";
+          link_tag.type="text/css";
+          link_tag.href=css;
+          link_tag.crossorigin="anonymous";
+          head_tag.appendChild(link_tag);
+       }
+       injectCSS("%s");"""
+    css_link = escape_quotes_if_needed(css_link)
+    driver.execute_script(script_to_add_css % css_link)
+
+
+def add_js_link(driver, js_link):
+    script_to_add_js = """function injectJS(link) {
+          var body_tag=document.getElementsByTagName("body")[0];
+          var script_tag=document.createElement("script");
+          script_tag.src=link;
+          script_tag.type="text/javascript";
+          script_tag.crossorigin="anonymous";
+          script_tag.defer;
+          script_tag.onload=function() { null };
+          body_tag.appendChild(script_tag);
+       }
+       injectJS("%s");"""
+    js_link = escape_quotes_if_needed(js_link)
+    driver.execute_script(script_to_add_js % js_link)
 
 
 #######################################
@@ -482,9 +517,7 @@ def hover_and_click(
         hover_selector,
         click_selector,
         hover_by=By.CSS_SELECTOR,
-        click_by=By.CSS_SELECTOR,
-        timeout=configs.SMALL_TIMEOUT,
-):
+        click_by=By.CSS_SELECTOR):
     """
     Fires the hover event for a specified element by a given selector, then
     clicks on another element specified. Useful for dropdown hover based menus.
@@ -526,9 +559,7 @@ def hover_element_and_click(
         driver,
         element,
         click_selector,
-        click_by=By.CSS_SELECTOR,
-        timeout=configs.SMALL_TIMEOUT,
-):
+        click_by=By.CSS_SELECTOR):
     """
     Similar to hover_and_click(), but assumes top element is already found.
     """
@@ -561,9 +592,7 @@ def hover_element_and_double_click(
         driver,
         element,
         click_selector,
-        click_by=By.CSS_SELECTOR,
-        timeout=configs.SMALL_TIMEOUT,
-):
+        click_by=By.CSS_SELECTOR):
     start_ms = time.time() * 1000.0
     stop_ms = start_ms + (timeout * 1000.0)
     hover = ActionChains(driver).move_to_element(element)

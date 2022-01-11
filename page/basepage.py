@@ -4,6 +4,8 @@
 selenium基类
 本文件存放了selenium基类的封装方法
 """
+
+import re
 import sys
 
 from selenium.webdriver.common.by import By
@@ -362,100 +364,41 @@ class BasePage(object):
             hover_selector,
             click_selector,
             hover_by=By.CSS_SELECTOR,
-            click_by=By.CSS_SELECTOR,
-            timeout=None,
+            click_by=By.CSS_SELECTOR
     ):
         """When you want to hover over an element or dropdown menu,
         and then click an element that appears after that."""
-        if not timeout:
-            timeout = settings.SMALL_TIMEOUT
-        if self.timeout_multiplier and timeout == settings.SMALL_TIMEOUT:
-            timeout = self.__get_new_timeout(timeout)
-        original_selector = hover_selector
-        original_by = hover_by
         hover_selector, hover_by = self.__recalculate_selector(
             hover_selector, hover_by
         )
         hover_selector = self.convert_to_css_selector(hover_selector, hover_by)
         hover_by = By.CSS_SELECTOR
-        click_selector, click_by = self.__recalculate_selector(
-            click_selector, click_by
-        )
-        dropdown_element = self.wait_for_element_visible(
-            hover_selector, by=hover_by, timeout=timeout
-        )
-        self.__demo_mode_highlight_if_active(original_selector, original_by)
+        click_selector, click_by = self.__recalculate_selector(click_selector, click_by)
+        dropdown_element = self.wait_for_element_visible(hover_selector, by=hover_by)
         self.scroll_to(hover_selector, by=hover_by)
         pre_action_url = self.driver.current_url
         pre_window_count = len(self.driver.window_handles)
-        if self.recorder_mode:
-            url = self.get_current_url()
-            if url and len(url) > 0:
-                if ("http:") in url or ("https:") in url or ("file:") in url:
-                    if self.get_session_storage_item("pause_recorder") == "no":
-                        time_stamp = self.execute_script("return Date.now();")
-                        origin = self.get_origin()
-                        the_selectors = [hover_selector, click_selector]
-                        action = ["ho_cl", the_selectors, origin, time_stamp]
-                        self.__extra_actions.append(action)
         outdated_driver = False
         element = None
         try:
-            if self.mobile_emulator:
-                # On mobile, click to hover the element
-                dropdown_element.click()
-            elif self.browser == "safari":
-                # Use the workaround for hover-clicking on Safari
-                raise Exception("This Exception will be caught.")
-            else:
-                page_actions.hover_element(self.driver, dropdown_element)
+            page_utils.hover_element(self.driver, dropdown_element)
         except Exception:
             outdated_driver = True
-            element = self.wait_for_element_present(
-                click_selector, click_by, timeout
-            )
+            element = self.wait_for_element_present(click_selector, click_by)
             if click_by == By.LINK_TEXT:
-                self.open(self.__get_href_from_link_text(click_selector))
+                self.visit(self.__get_href_from_link_text(click_selector))
             elif click_by == By.PARTIAL_LINK_TEXT:
-                self.open(
-                    self.__get_href_from_partial_link_text(click_selector)
-                )
+                self.visit(self.__get_href_from_partial_link_text(click_selector))
             else:
-                self.__dont_record_js_click = True
                 self.js_click(click_selector, by=click_by)
-                self.__dont_record_js_click = False
         if outdated_driver:
             pass  # Already did the click workaround
-        elif self.mobile_emulator:
-            self.click(click_selector, by=click_by)
         elif not outdated_driver:
-            element = page_actions.hover_and_click(
-                self.driver,
-                hover_selector,
-                click_selector,
-                hover_by,
-                click_by,
-                timeout,
-            )
+            element = page_utils.hover_and_click(self.driver, hover_selector, click_selector, hover_by, click_by)
         latest_window_count = len(self.driver.window_handles)
-        if (
-                latest_window_count > pre_window_count
-                and (
-                self.recorder_mode
-                or (
-                        settings.SWITCH_TO_NEW_TABS_ON_CLICK
-                        and self.driver.current_url == pre_action_url
-                )
-        )
-        ):
+        if (latest_window_count > pre_window_count
+                and self.driver.current_url == pre_action_url):
             self.__switch_to_newest_window_if_not_blank()
-        if self.demo_mode:
-            if self.driver.current_url != pre_action_url:
-                self.__demo_mode_pause_if_active()
-            else:
-                self.__demo_mode_pause_if_active(tiny=True)
-        elif self.slow_mode:
-            self.__slow_mode_pause_if_active()
         return element
 
     def hover_and_double_click(
@@ -1068,6 +1011,15 @@ class BasePage(object):
     def switch_to_newest_window(self):
         self.switch_to_window(len(self.driver.window_handles) - 1)
 
+    def __switch_to_newest_window_if_not_blank(self):
+        current_window = self.driver.current_window_handle
+        try:
+            self.switch_to_window(len(self.driver.window_handles) - 1)
+            if self.get_current_url() == "about:blank":
+                self.switch_to_window(current_window)
+        except Exception:
+            self.switch_to_window(current_window)
+
     def update_text(self, selector, by=By.CSS_SELECTOR, text=None):
         """This method updates an element's text field with new text.
         Has multiple parts:
@@ -1117,6 +1069,112 @@ class BasePage(object):
                 element.send_keys(text[:-1])
                 element.send_keys(Keys.RETURN)
 
+    def js_click(self, selector, by=By.CSS_SELECTOR, all_matches=False, scroll=True):
+        """Clicks an element using JavaScript.
+        Can be used to click hidden / invisible elements.
+        If "all_matches" is False, only the first match is clicked.
+        If "scroll" is False, won't scroll unless running in Demo Mode."""
+        selector, by = self.__recalculate_selector(selector, by, xp_ok=False)
+        if by == By.LINK_TEXT:
+            message = (
+                "Pure JavaScript doesn't support clicking by Link Text. "
+                "You may want to use self.jquery_click() instead, which "
+                "allows this with :contains(), assuming jQuery isn't blocked. "
+                "For now, self.js_click() will use a regular WebDriver click."
+            )
+            logging.debug(message)
+            self.click(selector, by=by)
+            return
+        element = self.wait_for_element_present(selector, by=by)
+        if self.is_element_visible(selector, by=by):
+            if scroll:
+                success = page_utils.scroll_to_element(self.driver, element)
+                if not success:
+                    element = self.wait_for_element_present(selector, by)
+        css_selector = self.convert_to_css_selector(selector, by=by)
+        css_selector = re.escape(css_selector)  # Add "\\" to special chars
+        css_selector = self.__escape_quotes_if_needed(css_selector)
+        pre_action_url = self.driver.current_url
+        pre_window_count = len(self.driver.window_handles)
+        if not all_matches:
+            if ":contains\\(" not in css_selector:
+                self.__js_click(selector, by=by)
+            else:
+                click_script = """jQuery('%s')[0].click();""" % css_selector
+                self.safe_execute_script(click_script)
+        else:
+            if ":contains\\(" not in css_selector:
+                self.__js_click_all(selector, by=by)
+            else:
+                click_script = """jQuery('%s').click();""" % css_selector
+                self.safe_execute_script(click_script)
+        latest_window_count = len(self.driver.window_handles)
+        if (latest_window_count > pre_window_count
+                and self.driver.current_url == pre_action_url):
+            self.__switch_to_newest_window_if_not_blank()
+
+    def __js_click(self, selector, by=By.CSS_SELECTOR):
+        """ Clicks an element using pure JS. Does not use jQuery. """
+        selector, by = self.__recalculate_selector(selector, by)
+        css_selector = self.convert_to_css_selector(selector, by=by)
+        css_selector = re.escape(css_selector)  # Add "\\" to special chars
+        css_selector = self.__escape_quotes_if_needed(css_selector)
+        script = (
+                """var simulateClick = function (elem) {
+                       var evt = new MouseEvent('click', {
+                           bubbles: true,
+                           cancelable: true,
+                           view: window
+                       });
+                       var canceled = !elem.dispatchEvent(evt);
+                   };
+                   var someLink = document.querySelector('%s');
+                   simulateClick(someLink);"""
+                % css_selector
+        )
+        self.execute_script(script)
+
+    def __js_click_all(self, selector, by=By.CSS_SELECTOR):
+        """ Clicks all matching elements using pure JS. (No jQuery) """
+        selector, by = self.__recalculate_selector(selector, by)
+        css_selector = self.convert_to_css_selector(selector, by=by)
+        css_selector = re.escape(css_selector)  # Add "\\" to special chars
+        css_selector = self.__escape_quotes_if_needed(css_selector)
+        script = (
+                """var simulateClick = function (elem) {
+                       var evt = new MouseEvent('click', {
+                           bubbles: true,
+                           cancelable: true,
+                           view: window
+                       });
+                       var canceled = !elem.dispatchEvent(evt);
+                   };
+                   var $elements = document.querySelectorAll('%s');
+                   var index = 0, length = $elements.length;
+                   for(; index < length; index++){
+                   simulateClick($elements[index]);}"""
+                % css_selector
+        )
+        self.execute_script(script)
+
+    def safe_execute_script(self, script, *args, **kwargs):
+        """When executing a script that contains a jQuery command,
+        it's important that the jQuery library has been loaded first.
+        This method will load jQuery if it wasn't already loaded."""
+        self.__check_browser()
+        if not page_utils.is_jquery_activated(self.driver):
+            self.activate_jquery()
+        return self.driver.execute_script(script, *args, **kwargs)
+
+    def activate_jquery(self):
+        """If "jQuery is not defined", use this method to activate it for use.
+        This happens because jQuery is not always defined on web sites."""
+        page_utils.activate_jquery(self.driver)
+
+    @staticmethod
+    def __escape_quotes_if_needed(string):
+        return page_utils.escape_quotes_if_needed(string)
+
     def refresh_page(self):
         page_utils.clear_out_console_logs(self.driver)
         self.driver.refresh()
@@ -1149,6 +1207,99 @@ class BasePage(object):
                 Select(element).select_by_value(option)
             else:
                 Select(element).select_by_visible_text(option)
+
+    def get_link_attribute(self, link_text, attribute, hard_fail=True):
+        """Finds a link by link text and then returns the attribute's value.
+        If the link text or attribute cannot be found, an exception will
+        get raised if hard_fail is True (otherwise None is returned)."""
+        soup = self.get_beautiful_soup()
+        html_links = soup.find_all("a")
+        for html_link in html_links:
+            if html_link.text.strip() == link_text.strip():
+                if html_link.has_attr(attribute):
+                    attribute_value = html_link.get(attribute)
+                    return attribute_value
+                if hard_fail:
+                    raise Exception(
+                        "Unable to find attribute {%s} from link text {%s}!"
+                        % (attribute, link_text)
+                    )
+                else:
+                    return None
+        if hard_fail:
+            raise Exception("Link text {%s} was not found!" % link_text)
+        else:
+            return None
+
+    def __get_href_from_link_text(self, link_text, hard_fail=True):
+        href = self.get_link_attribute(link_text, "href", hard_fail)
+        if not href:
+            return None
+        if href.startswith("//"):
+            link = "http:" + href
+        elif href.startswith("/"):
+            url = self.driver.current_url
+            domain_url = self.get_domain_url(url)
+            link = domain_url + href
+        else:
+            link = href
+        return link
+
+    def get_partial_link_text_attribute(self, link_text, attribute, hard_fail=True):
+        """Finds a link by partial link text and then returns the attribute's
+        value. If the partial link text or attribute cannot be found, an
+        exception will get raised if hard_fail is True (otherwise None
+        is returned)."""
+        soup = self.get_beautiful_soup()
+        html_links = soup.find_all("a")
+        for html_link in html_links:
+            if link_text.strip() in html_link.text.strip():
+                if html_link.has_attr(attribute):
+                    attribute_value = html_link.get(attribute)
+                    return attribute_value
+                if hard_fail:
+                    raise Exception(
+                        "Unable to find attribute {%s} from "
+                        "partial link text {%s}!" % (attribute, link_text)
+                    )
+                else:
+                    return None
+        if hard_fail:
+            raise Exception(
+                "Partial Link text {%s} was not found!" % link_text
+            )
+        else:
+            return None
+
+    def __get_href_from_partial_link_text(self, link_text, hard_fail=True):
+        href = self.get_partial_link_text_attribute(
+            link_text, "href", hard_fail
+        )
+        if not href:
+            return None
+        if href.startswith("//"):
+            link = "http:" + href
+        elif href.startswith("/"):
+            url = self.driver.current_url
+            domain_url = self.get_domain_url(url)
+            link = domain_url + href
+        else:
+            link = href
+        return link
+
+    def get_current_url(self):
+        current_url = self.driver.current_url
+        if "%" in current_url and sys.version_info[0] >= 3:
+            try:
+                from urllib.parse import unquote
+                current_url = unquote(current_url, errors="strict")
+            except Exception:
+                pass
+        return current_url
+
+    @staticmethod
+    def get_domain_url(url):
+        return page_utils.get_domain_url(url)
 
     ############
 

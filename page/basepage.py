@@ -4,7 +4,7 @@
 selenium基类
 本文件存放了selenium基类的封装方法
 """
-
+import json
 import re
 import sys
 
@@ -309,7 +309,7 @@ class BasePage(object):
                 Or it can be a list item from self.driver.window_handles """
         if isinstance(window, int):
             try:
-                window_handle = self.wait.until(self.driver.window_handles[window])
+                window_handle = self.driver.window_handles[window]
                 self.driver.switch_to.window(window_handle)
                 return True
             except Exception:
@@ -1303,7 +1303,33 @@ class BasePage(object):
 
     ############
 
-    # deal with link texts
+    # screenshots
+
+    def save_screenshot(self, name, folder=None, selector=None, by=By.CSS_SELECTOR):
+        """
+        Saves a screenshot of the current page.
+        If no folder is specified, uses the folder where pytest was called.
+        The screenshot will include the entire page unless a selector is given.
+        If a provided selector is not found, then takes a full-page screenshot.
+        If the folder provided doesn't exist, it will get created.
+        The screenshot will be in PNG format: (*.png)
+        """
+        if selector and by:
+            selector, by = self.__recalculate_selector(selector, by)
+            if page_utils.is_element_present(self.driver, selector, by):
+                return page_utils.save_screenshot(
+                    self.driver, name, folder, selector, by
+                )
+        return page_utils.save_screenshot(self.driver, name, folder)
+
+    def save_page_source(self, name, folder=None):
+        """Saves the page HTML to the current directory (or given subfolder).
+        If the folder specified doesn't exist, it will get created.
+        @Params
+        name - The file name to save the current page's HTML to.
+        folder - The folder to save the file to. (Default = current folder)
+        """
+        return page_utils.save_page_source(self.driver, name, folder)
 
 
 if __name__ == "__main__":

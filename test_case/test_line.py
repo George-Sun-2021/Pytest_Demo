@@ -19,6 +19,7 @@ class TestSimple:
     """
 
     def test_001(self, drivers):
+        """测试百度搜索python->选择菜鸟教程进入并简单测试"""
         base = BasePage(drivers)
         base.visit("https://www.baidu.com/")  # 1. 打开百度
         base.type("#kw", text="python")  # 2. 搜索python
@@ -35,7 +36,6 @@ class TestSimple:
         base.scroll_to(".previous-next-links:nth-child(4) > .next-design-link > a:nth-child(1)")
         # 11. 点击“下一页“ 按钮
         base.click(".previous-next-links:nth-child(4) > .next-design-link > a:nth-child(1)")
-        sleep(2)
 
 
 if __name__ == '__main__':

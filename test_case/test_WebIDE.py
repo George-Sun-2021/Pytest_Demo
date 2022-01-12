@@ -29,7 +29,7 @@ class TestUntitled():
     def test_untitled(self):
         """
         problem:
-        1. need to change firefox to chrome manually when changing web browser
+        1. need to change/add configs(OS/BR) manually when changing running env
         2. if id/name does not exist, using css selector and absolute path by default,
         make it easier to miss the element when rerun
         3. no wait timeout, need to add force timeout manually or the elements would be failed to locate,

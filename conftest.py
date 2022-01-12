@@ -14,7 +14,6 @@ from utils.time import timestamp
 from utils.send_mail import send_report
 
 from selenium import webdriver
-from selenium.webdriver import Remote
 from selenium.webdriver.chrome.options import Options as CO
 from selenium.webdriver.firefox.options import Options as FO
 from selenium.webdriver.ie.options import Options as IEO
@@ -76,7 +75,8 @@ def drivers(request):
     browser = request.config.getoption("browser")
     # headless or not
     headless = request.config.getoption("headless")
-    print("获取命令行传参：{}".format(request.config.getoption("browser")))
+    logging.info("get arguments：{}".format(request.config.getoption("browser")))
+    logging.info("get arguments：{}".format(request.config.getoption("headless")))
     if not headless:
         if browser == "chrome":
             driver = webdriver.Chrome()
@@ -102,6 +102,8 @@ def drivers(request):
         else:
             logging.info("发送错误浏览器参数：{}".format(browser))
 
+    driver.set_page_load_timeout(configs.EXTREME_TIMEOUT)
+    driver.set_script_timeout(configs.EXTREME_TIMEOUT)
     driver.maximize_window()
     yield driver
     # driver.close()
@@ -112,7 +114,7 @@ def drivers(request):
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item):
     """
-    当测试失败的时候，自动截图，展示到html报告中
+    capture the screenshot automatically while the test is failed, and show it in the html report
     :param item:
     """
     pytest_html = item.config.pluginmanager.getplugin('html')
@@ -151,19 +153,19 @@ def pytest_html_results_table_html(report, data):
 
 
 # def pytest_html_report_title(report):
-#     report.title = "pytest示例项目测试报告"
+#     report.title = "pytest demo report"
 
 
 def pytest_configure(config):
     config._metadata.clear()
-    config._metadata['测试项目'] = "测试百度官网搜索"
+    config._metadata['测试项目'] = "Pytest Demo Presentation"
     config._metadata['测试地址'] = ini.url
 
 
 def pytest_html_results_summary(prefix, summary, postfix):
     # prefix.clear() # 清空summary中的内容
-    prefix.extend([html.p("所属部门: XX公司测试部")])
-    prefix.extend([html.p("测试执行人: 随风挥手")])
+    prefix.extend([html.p("Dept.: Kingland-Indy")])
+    prefix.extend([html.p("Tester: George")])
 
 
 def pytest_terminal_summary(terminalreporter, exitstatus, config):

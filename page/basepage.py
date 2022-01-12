@@ -56,8 +56,7 @@ class BasePage(object):
         open the url
         @param url:target url to test
         """
-        self.driver.set_page_load_timeout(configs.PAGE_LOAD_TIMEOUT)
-        self.driver.implicitly_wait(configs.EXTREME_TIMEOUT)
+        self.driver.implicitly_wait(configs.LARGE_TIMEOUT)
         try:
             self.driver.get(url)
             logging.info("opening website：%s" % url)

@@ -22,7 +22,7 @@ class TestSearch:
         search = SearchPage(drivers)
         search.input_search("selenium")
         search.click_search()
-        result = re.search(r'selenium', search.get_page_source)
+        result = re.search(r'selenaium', search.get_page_source)
         log.info(result)
         assert result
 

@@ -9,6 +9,12 @@ from page_object.searchpage import SearchPage
 
 
 @allure.feature("测试百度模块")
+@allure.story("Login")
+@allure.severity("normal")
+@allure.description("测试登录")
+@allure.link("https://www.baidu.com", name="连接跳转百度")
+@allure.testcase("https://www.sina.com", name="测试用例位置")
+@allure.title("执行测试用例用于登录模块")
 class TestSearch:
     @pytest.fixture(scope='function', autouse=True)
     def open_baidu(self, drivers):

@@ -16,7 +16,6 @@ LARGE_TIMEOUT = 10
 EXTREME_TIMEOUT = 30
 POLL_FREQUENCY = 0.5
 PAGE_REFRESH_TIMEOUT = 30
-PAGE_LOAD_TIMEOUT = 60
 
 # Default browser resolutions when opening new windows for tests.
 # (Headless resolutions take priority, and include all browsers.)

@@ -15,7 +15,7 @@ from common.readconfig import ini
 #     """主函数"""
 #     steps = [
 #         "venv\\Script\\activate" if WIN else "source venv/bin/activate",
-#         "copy config\\environment.properties allure-results\\environment.properties"
+#         "copy config\\environment.xml allure-results\\environment.xml"
 #         "pytest -m demo --alluredir allure-results --clean-alluredir",
 #         "allure generate allure-results -c -o allure-report",
 #         "allure open allure-report"
@@ -30,13 +30,13 @@ allure_report = pm.ALLURE_REPORT
 history_file = pm.ALLURE_HISTORY_FILE
 
 environment_info = [
-    {"name": 'System version', "values": sys.platform},
-    {"name": 'python version', "values": sys.version},
-    {"name": 'Test version', "values": ini.allure_env("version")},
-    {"name": 'Test case reference', "values": ini.allure_env("reference")},
-    {"name": 'Project name', "values": ini.allure_env("project")},
-    {"name": 'Tester', "values": ini.allure_env("author")},
-    {"name": 'Description', "values": ini.allure_env("description")}
+    {"name": 'System version', "values": [sys.platform]},
+    {"name": 'python version', "values": [sys.version]},
+    {"name": 'Test version', "values": [ini.allure_env('version')]},
+    {"name": 'Test case reference', "values": [ini.allure_env('reference')]},
+    {"name": 'Project name', "values": [ini.allure_env('project')]},
+    {"name": 'Tester', "values": [ini.allure_env('author')]},
+    {"name": 'Description', "values": [ini.allure_env('description')]}
 ]
 
 
@@ -67,6 +67,7 @@ def update_trend_data(build_order, old_data: list):
     # 将环境信息写入environment.json
     with open(report_widgets + '/environment.json', 'w', encoding='utf-8') as f:
         json.dump(environment_info, f, ensure_ascii=False, indent=4)
+
     # 读取最新生成的history-trend.json数据
     with open(os.path.join(report_widgets, "history-trend.json")) as f:
         data = f.read()
@@ -110,9 +111,13 @@ def compress_file(zip_file_name, dir_name):
 
 def main():
     """主函数"""
+    cat_file = os.path.join(pm.CONFIG_PATH, 'categories.json')
     run_test_steps = [
         "venv\\Script\\activate" if WIN else "source venv/bin/activate",
-        f"pytest -m demo --alluredir {allure_result} --clean-alluredir"
+        f"copy {cat_file} {allure_result}",
+        f"pytest -m demo --alluredir {allure_result}"
+        # f"copy {config_env_file} {allure_result}",
+        # f"pytest -m demo --alluredir {allure_result}"
     ]
     for step in run_test_steps:
         subprocess.run("call " + step if WIN else step, shell=True)

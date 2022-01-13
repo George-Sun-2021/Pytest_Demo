@@ -10,6 +10,9 @@ class PathManager(object):
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     # page element directory
+    CONFIG_PATH = os.path.join(BASE_DIR, "config")
+
+    # page element directory
     ELEMENT_PATH = os.path.join(BASE_DIR, "page_element")
 
     # report directory
@@ -54,7 +57,7 @@ class PathManager(object):
     @property
     def ini_file(self):
         """read config.ini"""
-        ini_file = os.path.join(self.BASE_DIR, 'config', 'config.ini')
+        ini_file = os.path.join(self.CONFIG_PATH, 'config.ini')
         if not os.path.exists(ini_file):
             raise FileNotFoundError("Config file: %s does not exist！" % ini_file)
         return ini_file

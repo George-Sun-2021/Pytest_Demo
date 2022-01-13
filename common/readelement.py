@@ -23,7 +23,7 @@ class Element(object):
         if data:
             name, value = data.split('==')
             return value, conf.LOCATE_MODE[name]
-        raise ArithmeticError("The keyword: {} is not in {}".format(item, self.file_name))
+        raise ArithmeticError(f"The keyword: {item} is not in {self.file_name}")
 
 
 if __name__ == '__main__':

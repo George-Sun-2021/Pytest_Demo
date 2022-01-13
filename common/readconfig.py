@@ -3,8 +3,6 @@
 import configparser
 from config.path_manager import pm
 
-HOST = 'HOST'
-
 
 class ReadConfig(object):
     """配置文件"""
@@ -25,10 +23,14 @@ class ReadConfig(object):
 
     @property
     def url(self):
-        return self._get(HOST, HOST)
+        return self._get('HOST', 'host')
+
+    def allure_env(self, args):
+        return self._get('ALLURE_ENVIRONMENT', args)
 
 
 ini = ReadConfig()
 
 if __name__ == '__main__':
     print(ini.url)
+    print(ini.allure_env('email'))

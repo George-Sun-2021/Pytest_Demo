@@ -8,13 +8,12 @@ from common.readconfig import ini
 from page_object.searchpage import SearchPage
 
 
-@allure.feature("测试百度模块")
-@allure.story("Login")
-@allure.severity("normal")
-@allure.description("测试登录")
-@allure.link("https://www.baidu.com", name="连接跳转百度")
-@allure.testcase("https://www.sina.com", name="测试用例位置")
 @allure.title("执行测试用例用于登录模块")
+@allure.epic("v1.0.0 - automation test")
+@allure.feature("Pytest测试demo")
+@allure.description("简单测试登录baidu")
+@allure.link("https://www.baidu.com", name="连接跳转百度")
+@pytest.mark.demo
 class TestSearch:
     @pytest.fixture(scope='function', autouse=True)
     def open_baidu(self, drivers):
@@ -22,9 +21,11 @@ class TestSearch:
         search = SearchPage(drivers)
         search.visit(ini.url)
 
-    @allure.story("搜索selenium结果用例")
+    @allure.story("测试百度搜索selenium结果")
+    @allure.severity("critical")
+    @allure.testcase("https://www.confluence.xxx.com", name="测试用例位置")
     def test_001(self, drivers):
-        """搜索"""
+        """测试百度搜索selenium结果"""
         search = SearchPage(drivers)
         search.input_search("selenium")
         search.click_search()
@@ -32,7 +33,9 @@ class TestSearch:
         log.info(result)
         assert result
 
-    @allure.story("测试搜索候选用例")
+    @allure.story("测试搜索候选")
+    @allure.severity("normal")
+    @allure.testcase("https://www.confluence.xxx.com", name="测试用例位置")
     def test_002(self, drivers):
         """测试搜索候选"""
         search = SearchPage(drivers)

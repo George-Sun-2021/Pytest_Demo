@@ -10,7 +10,7 @@ def timestamp():
     return time.time()
 
 
-def dt_strftime(fmt="%Y%m"):
+def dt_strftime(fmt="%Y%m%d"):
     """
     datetime格式化时间
     :param fmt "%Y%m%d %H%M%S

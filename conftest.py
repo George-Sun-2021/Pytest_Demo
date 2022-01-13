@@ -4,12 +4,12 @@ import base64
 import os
 import pytest
 import allure
-import logging
 from py.xml import html
 
 from config import configs
 from config.path_manager import pm
 from common.readconfig import ini
+from utils.logger import log
 from utils.time import timestamp
 from utils.send_mail import send_report
 
@@ -75,8 +75,8 @@ def drivers(request):
     browser = request.config.getoption("browser")
     # headless or not
     headless = request.config.getoption("headless")
-    logging.info("get arguments：{}".format(request.config.getoption("browser")))
-    logging.info("get arguments：{}".format(request.config.getoption("headless")))
+    log.info(f"get arguments：{browser}")
+    log.info(f"get arguments：{headless}")
     if not headless:
         if browser == "chrome":
             driver = webdriver.Chrome()
@@ -85,7 +85,7 @@ def drivers(request):
         elif browser == "ie":
             driver = webdriver.Ie()
         else:
-            logging.info("发送错误浏览器参数：{}".format(browser))
+            log.info(f"发送错误浏览器参数：{browser}")
     else:
         if browser == "chrome":
             chrome_options = CO()
@@ -100,7 +100,7 @@ def drivers(request):
             ie_options.add_argument('--headless')
             driver = webdriver.Ie(ie_options=ie_options)
         else:
-            logging.info("发送错误浏览器参数：{}".format(browser))
+            log.info(f"发送错误浏览器参数：{browser}")
 
     driver.set_page_load_timeout(configs.EXTREME_TIMEOUT)
     driver.set_script_timeout(configs.EXTREME_TIMEOUT)
@@ -189,7 +189,7 @@ def _capture_screenshot():
     now_time, screen_file = pm.screen_path
     driver.save_screenshot(screen_file)
     allure.attach.file(screen_file,
-                       "失败截图{}".format(now_time),
+                       f"失败截图{now_time}",
                        allure.attachment_type.PNG)
     with open(screen_file, 'rb') as f:
         imagebase64 = base64.b64encode(f.read())

@@ -32,6 +32,8 @@ from config.path_manager import pm
 from page import page_utils
 import logging
 
+from utils.logger import log
+
 
 class BasePage(object):
     """selenium base methods"""
@@ -59,7 +61,7 @@ class BasePage(object):
         self.driver.implicitly_wait(configs.LARGE_TIMEOUT)
         try:
             self.driver.get(url)
-            logging.info("opening website：%s" % url)
+            log.info("opening website：%s" % url)
         except TimeoutException:
             raise TimeoutException("open'%s' timeout, please check the network or web server correct or not" % url)
 
@@ -251,7 +253,7 @@ class BasePage(object):
             return self.wait.until(EC.presence_of_all_elements_located(locator))
         except Exception:
             message = "Elements {%s} were not visible after %s seconds!" % (selector, self.timeout)
-            logging.info(page_utils.timeout_exception(ElementNotVisibleException, message))
+            log.info(page_utils.timeout_exception(ElementNotVisibleException, message))
 
     @property
     def get_page_source(self):
@@ -641,7 +643,7 @@ class BasePage(object):
         _type = type(selector)  # First make sure the selector is a string
         not_string = False
         if _type is tuple:
-            if len(selector) is not 2:
+            if len(selector) != 2:
                 msg = "Expecting a selector with length of 2!"
                 raise Exception('Invalid selector type: "%s"\n%s' % (_type, msg))
             selector, by = selector[0], selector[1]
@@ -774,7 +776,7 @@ class BasePage(object):
             return self.wait.until(EC.presence_of_element_located(locator))
         except Exception:
             message = "Element {%s} was not present after %s seconds!" % (selector, self.timeout)
-        logging.info(page_utils.timeout_exception(NoSuchElementException, message))
+        log.info(page_utils.timeout_exception(NoSuchElementException, message))
 
     def wait_for_element_visible(self, selector, by=By.CSS_SELECTOR):
         """
@@ -796,7 +798,7 @@ class BasePage(object):
             return self.wait.until(EC.visibility_of_element_located(locator))
         except Exception:
             message = "Element {%s} was not visible after %s seconds!" % (selector, self.timeout)
-            logging.info(page_utils.timeout_exception(ElementNotVisibleException, message))
+            log.info(page_utils.timeout_exception(ElementNotVisibleException, message))
 
     def wait_for_element_clickable(self, selector, by=By.CSS_SELECTOR):
         """
@@ -818,7 +820,7 @@ class BasePage(object):
             return self.wait.until(EC.element_to_be_clickable(locator))
         except Exception:
             message = "Element {%s} was not clickable after %s seconds!" % (selector, self.timeout)
-            logging.info(page_utils.timeout_exception(ElementNotVisibleException, message))
+            log.info(page_utils.timeout_exception(ElementNotVisibleException, message))
 
     def wait_for_text_visible(self, text, selector, by=By.CSS_SELECTOR):
         """
@@ -839,7 +841,7 @@ class BasePage(object):
             return self.wait.until(EC.text_to_be_present_in_element(locator, text))
         except ElementNotVisibleException:
             message = "Expected text {%s} for {%s} was not visible after %s seconds!" % (text, selector, self.timeout)
-            logging.info(page_utils.timeout_exception(ElementNotVisibleException, message))
+            log.info(page_utils.timeout_exception(ElementNotVisibleException, message))
 
     def wait_for_text_visible_in_value(self, text, selector, by=By.CSS_SELECTOR):
         """
@@ -861,7 +863,7 @@ class BasePage(object):
         except ElementNotVisibleException:
             message = "Expected text {%s} in {%s} value was not visible after %s seconds!" % (
                 text, selector, self.timeout)
-            logging.info(page_utils.timeout_exception(ElementNotVisibleException, message))
+            log.info(page_utils.timeout_exception(ElementNotVisibleException, message))
 
     def wait_for_attribute(self, selector, attribute, value=None, by=By.CSS_SELECTOR):
         """
@@ -908,17 +910,17 @@ class BasePage(object):
                 if not element_present:
                     # The element does not exist in the HTML
                     message = "Element {%s} was not present after %s seconds!" % (selector, self.timeout)
-                    logging.info(page_utils.timeout_exception(NoSuchElementException, message))
+                    log.info(page_utils.timeout_exception(NoSuchElementException, message))
                 if not attribute_present:
                     # The element does not have the attribute
                     message = ("Expected attribute {%s} of element {%s} was not present after %s seconds!" % (
                         attribute, selector, self.timeout))
-                    logging.info(page_utils.timeout_exception(NoSuchAttributeException, message))
+                    log.info(page_utils.timeout_exception(NoSuchAttributeException, message))
             # The element attribute exists, but the expected value does not match
             message = (
                     "Expected value {%s} for attribute {%s} of element {%s} was not present after %s seconds!"
                     "(The actual value was {%s})" % (value, attribute, selector, self.timeout, found_value))
-            logging.info(page_utils.timeout_exception(NoSuchAttributeException, message))
+            log.info(page_utils.timeout_exception(NoSuchAttributeException, message))
 
     def wait_for_element_absent(self, selector, by=By.CSS_SELECTOR):
         """
@@ -933,7 +935,7 @@ class BasePage(object):
             return True
         else:
             message = "Element {%s} was still present after %s seconds!" % (selector, self.timeout)
-            logging.info(page_utils.timeout_exception(Exception, message))
+            log.info(page_utils.timeout_exception(Exception, message))
 
     def wait_for_element_not_visible(self, selector, by=By.CSS_SELECTOR):
         """
@@ -951,7 +953,7 @@ class BasePage(object):
             return self.wait.until(EC.invisibility_of_element_located(locator))
         except Exception:
             message = "Element {%s} was still visible after %s seconds!" % (selector, self.timeout)
-            logging.info(page_utils.timeout_exception(Exception, message))
+            log.info(page_utils.timeout_exception(Exception, message))
 
     def wait_for_text_not_visible(self, text, selector, by=By.CSS_SELECTOR):
         """
@@ -968,7 +970,7 @@ class BasePage(object):
         if not self.is_text_visible(text, selector, by=by):
             return True
         message = "Text {%s} in {%s} was still visible after %s seconds!" % (text, selector, self.timeout)
-        logging.info(page_utils.timeout_exception(Exception, message))
+        log.info(page_utils.timeout_exception(Exception, message))
 
     def wait_for_attribute_not_present(self, selector, attribute, value=None, by=By.CSS_SELECTOR):
         """
@@ -991,7 +993,7 @@ class BasePage(object):
             message = (
                     "Value {%s} for attribute {%s} of element {%s} was still present after %s seconds!" % (
                 value, attribute, selector, self.timeout))
-        logging.info(page_utils.timeout_exception(Exception, message))
+        log.info(page_utils.timeout_exception(Exception, message))
 
     def __scroll_to_element(self, element, selector=None, by=By.CSS_SELECTOR):
         success = page_utils.scroll_to_element(self.driver, element)

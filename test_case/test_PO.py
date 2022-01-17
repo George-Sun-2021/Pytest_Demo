@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 import re
+from operator import add
+
 import pytest
 import allure
 from utils.logger import log
@@ -42,6 +44,13 @@ class TestSearch:
         search.input_search("selenium")
         log.info(list(search.imagine))
         assert all(["selenium" in i for i in search.imagine])
+
+    @allure.story("测试数据驱动")
+    @allure.severity("normal")
+    @pytest.mark.parametrize('a', (1, 2, 3, 4, 5))
+    def test_add(self, a):
+        print('\na的值:', a)
+        assert add(a, 1) == a + 1
 
 
 # if __name__ == '__main__':

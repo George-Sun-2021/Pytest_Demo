@@ -29,7 +29,8 @@ class TestUntitled():
     def test_untitled(self):
         """
         problem:
-        1. need to change/add configs(OS/BR) manually when changing running env
+        1. SUT as dependency, only able to use on the env(OS/BR/SUT version...) recording,
+        also, only able to start the recording once the SUT is available
         2. if id/name does not exist, using css selector + absolute path by default,
         make it easier to miss the element when rerun
         3. no wait timeout, need to add force timeout manually or the elements would be failed to locate,

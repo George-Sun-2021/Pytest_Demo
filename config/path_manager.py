@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
-import json
 import os
+import sys
+
 from utils.time import dt_strftime
 
 
@@ -9,7 +10,7 @@ class PathManager(object):
     # project directory
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-    # page element directory
+    # config directory
     CONFIG_PATH = os.path.join(BASE_DIR, "config")
 
     # page element directory
@@ -35,6 +36,14 @@ class PathManager(object):
     # allure report history path under allure report
     ALLURE_REPORT_HISTORY = os.path.join(ALLURE_REPORT, "history")
 
+    def chrome_executable_path(self, version):
+        """driver directory"""
+        driver_path = os.path.join(self.BASE_DIR, "driver")
+        iswin = sys.platform.startswith('win')
+        if iswin:
+            return os.path.join(driver_path, version, "chromedriver.exe")
+        else:
+            return os.path.join(driver_path, version, "chromedriver")
 
     @property
     def screen_path(self):

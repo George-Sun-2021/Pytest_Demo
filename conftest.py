@@ -79,7 +79,7 @@ def drivers(request):
     log.info(f"get arguments：{headless}")
     if not headless:
         if browser == "chrome":
-            driver = webdriver.Chrome()
+            driver = webdriver.Chrome(pm.chrome_executable_path("97.0.4692.71"))
         elif browser == "firefox":
             driver = webdriver.Firefox()
         elif browser == "ie":
